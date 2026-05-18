@@ -31,14 +31,14 @@
         </tr>
     </table>
 
-    <p>Full Name: <%= user.getFullName() %></p>
-    <p>Email: <%= user.getEmail() %></p>
-    <p>Phone: <%= user.getPhone() %></p>
-    <p>Gender: <%= user.getGender() %></p>
-    <p>Date of Birth: <%= user.getDateOfBirth() != null ? user.getDateOfBirth().toLocalDate() : "" %></p>
-    <p>Address: <%= user.getAddress() %></p>
-    <p>Role: <%= user.getRoleName() %></p>
-    <p>Status: <%= user.isActive() ? "Active" : "Inactive" %></p>
+    <p><strong>Full Name:</strong> <%= user.getFullName() %></p>
+    <p><strong>Email:</strong> <%= user.getEmail() %></p>
+    <p><strong>Phone:</strong> <%= user.getPhone() %></p>
+    <p><strong>Gender:</strong> <%= user.getGender() %></p>
+    <p><strong>Date of Birth:</strong> <%= user.getDateOfBirth() != null ? user.getDateOfBirth().toLocalDate() : "" %></p>
+    <p><strong>Address:</strong> <%= user.getAddress() %></p>
+    <p><strong>Role:</strong> <%= user.getRoleName() %></p>
+    <p><strong>Status:</strong> <%= user.isActive() ? "Active" : "Inactive" %></p>
 </div>
 
 </body>
