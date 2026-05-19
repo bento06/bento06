@@ -59,6 +59,7 @@
             <p><a href="${pageContext.request.contextPath}/admin/users/add">Add New User</a></p>
             <p><a href="${pageContext.request.contextPath}/user_list">Update User Info</a></p>
             <p><a href="${pageContext.request.contextPath}/user_list">Active/Deactive User</a></p>
+            <p><a href="${pageContext.request.contextPath}/admin/password-reset-requests">Request reset password</a></p>
 
 
         <h3>Role Management</h3>
@@ -69,7 +70,7 @@
             <p><a href="${pageContext.request.contextPath}/admin/roles">Active/Deactive Role</a></p>
             <p><a href="${pageContext.request.contextPath}/admin/roles/edit_permissions?roleId=1">Edit Role Permissions</a></p>
 
-    <p><a href="${pageContext.request.contextPath}/admin/password-reset-requests">Request reset password</a></p>
+
 
 <% } else { %>
 
