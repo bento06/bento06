@@ -55,6 +55,22 @@ public class RoleDAO {
     }
 
 
+
+    public boolean updateRoleInfo(int id, String name, String description) {
+        String sql = "UPDATE roles SET name = ?, description = ? WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, name);
+            ps.setString(2, description);
+            ps.setInt(3, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
     public void deleteRolePermissions(int roleId) {
         String sql = "DELETE FROM role_permissions WHERE role_id = ?";
         try (Connection conn = DBConnection.getConnection();
