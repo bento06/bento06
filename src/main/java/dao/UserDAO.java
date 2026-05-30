@@ -13,8 +13,6 @@ import java.util.List;
 
 public class UserDAO {
 
-
-
     public User findByEmailAndPassword(String email, String password) {
         String sql = """
                 SELECT u.*, r.name AS role_name
@@ -44,7 +42,6 @@ public class UserDAO {
 
         return null;
     }
-
 
 
     public User findById(int id) {
@@ -101,8 +98,6 @@ public class UserDAO {
     }
 
 
-
-
     public List<User> findAllUsers() {
         List<User> users = new ArrayList<>();
 
@@ -127,8 +122,6 @@ public class UserDAO {
 
         return users;
     }
-
-
 
 
     public List<User> searchUsers(String keyword) {
@@ -287,9 +280,6 @@ public class UserDAO {
         return false;
     }
 
-
-
-
     public boolean updateUserStatus(int userId, boolean active) {
         String sql = """
                 UPDATE users
@@ -309,9 +299,6 @@ public class UserDAO {
         }
         return false;
     }
-
-
-
 
     public boolean checkOldPassword(int userId, String oldPassword) {
         String sql = """
@@ -337,7 +324,6 @@ public class UserDAO {
 
         return false;
     }
-
 
     public boolean updatePassword(int userId, String newPassword) {
         String sql = """
@@ -586,9 +572,6 @@ public class UserDAO {
 
         return 0;
     }
-
-
-
 
     private User mapResultSetToUser(ResultSet rs) throws Exception {
         User user = new User();

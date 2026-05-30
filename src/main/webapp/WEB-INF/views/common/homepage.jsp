@@ -90,6 +90,16 @@
                     <li><a href="${pageContext.request.contextPath}/admin/roles/edit_permissions?roleId=1">Edit Role Permissions</a></li>
                 </ul>
             </div>
+
+            <div class="dashboard-card">
+                <h3>Position Management</h3>
+                <ul>
+                    <li><a href="${pageContext.request.contextPath}/position/list">View Position List</a></li>
+                    <li><a href="${pageContext.request.contextPath}/position/add">Add New Position</a></li>
+                    <li><a href="${pageContext.request.contextPath}/position/list">Update Position Info</a></li>
+                    <li><a href="${pageContext.request.contextPath}/position/list">Active/Deactive Position</a></li>
+                </ul>
+            </div>
         </div>
 
     <% } else { %>
