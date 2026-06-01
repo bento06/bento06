@@ -1,16 +1,11 @@
-<%--
-  Created by IntelliJ IDEA.
-  User: Admin
-  Date: 5/14/2026
-  Time: 10:24 PM
-  To change this template use File | Settings | File Templates.
---%>
-<%@ page contentType="text/html;charset=UTF-8" language="java" %>
-<html>
-<head>
-    <title>Title</title>
-</head>
-<body>
-
-</body>
-</html>
+<%@ page contentType="text/html;charset=UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<nav class="navbar">
+    <a href="${pageContext.request.contextPath}/home" class="navbar-brand">HRM System</a>
+    <div class="navbar-links">
+        <a href="${pageContext.request.contextPath}/home">Home</a>
+        <a href="${pageContext.request.contextPath}/profile">Profile</a>
+        <a href="${pageContext.request.contextPath}/change-password">Change Password</a>
+        <a href="${pageContext.request.contextPath}/logout">Logout</a>
+    </div>
+</nav>

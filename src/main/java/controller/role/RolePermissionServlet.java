@@ -5,9 +5,9 @@ import dao.RoleDAO;
 import model.Permission;
 import model.Role;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.*;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.util.List;
 
@@ -46,7 +46,7 @@ public class RolePermissionServlet extends HttpServlet {
         request.setAttribute("role", role);
         request.setAttribute("rolePermissions", rolePermissions);
 
-        request.getRequestDispatcher("/WEB-INF/views/role/role-permission.jsp")
-               .forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/role/role_permission.jsp")
+                .forward(request, response);
     }
 }

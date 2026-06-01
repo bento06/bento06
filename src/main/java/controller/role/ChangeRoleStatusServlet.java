@@ -3,13 +3,13 @@ package controller.role;
 import dao.RoleDAO;
 import model.Role;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.*;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.*;
 import java.io.IOException;
 
-@WebServlet("/admin/roles/toggle-status")
-public class ToggleRoleStatusServlet extends HttpServlet {
+@WebServlet("/admin/roles/toggle_status")
+public class ChangeRoleStatusServlet extends HttpServlet {
 
     private final RoleDAO roleDAO = new RoleDAO();
 
