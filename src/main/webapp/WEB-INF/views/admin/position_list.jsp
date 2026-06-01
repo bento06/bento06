@@ -7,6 +7,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User List | HRM</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/style.css">
+    <style>
+            .search-filter {
+                margin-bottom: 1.5rem;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+            .search-filter input[type="text"],
+            .search-filter select {
+                padding: 0.5rem;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+            }
+            .search-filter button, .search-filter .btn-reset {
+                padding: 0.5rem 1rem;
+                cursor: pointer;
+            }
+        </style>
 </head>
 <body>
 
@@ -15,16 +34,23 @@
 <div class="container" style="margin-top: 2rem;">
     <div class="page-header">
         <h2>Position List</h2>
+        <a href="${pageContext.request.contextPath}/position/add" class="btn btn-primary">Add New Position</a>
     </div>
 
-    <div class="search-container">
+    <div class="search-filter">
         <form action="${pageContext.request.contextPath}/position/list" method="GET">
             <input type="text" name="search" placeholder="Search name" value="${oldKeyword}">
 
-            <button type="submit" class="search-btn">Search</button>
+            <select name="status">
+                <option value="all" ${status == 'all' || empty status ? 'selected' : ''}>All status</option>
+                <option value="true" ${status == 'true' ? 'selected' : ''}>Active</option>
+                <option value="false" ${status == 'false' ? 'selected' : ''}>Inactive</option>
+            </select>
+
+            <button type="submit" class="btn btn-primary">Search</button>
 
             <c:if test="${not empty oldKeyword}">
-                <a href="${pageContext.request.contextPath}/position/list" class="clear-btn">Clear</a>
+                <a href="${pageContext.request.contextPath}/position/list" class="btn btn-reset">Clear</a>
             </c:if>
         </form>
     </div>
