@@ -32,7 +32,7 @@ public class MoveMemberServlet extends HttpServlet {
 
         int userId = Integer.parseInt(request.getParameter("userId"));
         int newDeptId = Integer.parseInt(request.getParameter("newDeptId"));
-
+        int empId = 9;
         // Kiểm tra trước khi thực hiện
         if (deptDAO.isManager(userId)) {
             // Chặn lại và quay về trang danh sách với thông báo lỗi
@@ -43,7 +43,7 @@ public class MoveMemberServlet extends HttpServlet {
         }
 
         // Nếu qua được bước kiểm tra, mới thực hiện move
-        userDAO.updateDepartmentMember(userId, newDeptId, true);
+        userDAO.updateDepartmentMember(userId, newDeptId, empId, true);
         response.sendRedirect(request.getContextPath() + "/admin/departments/employees?id=" + newDeptId + "&success=Move succesfully!");
     }
 }
