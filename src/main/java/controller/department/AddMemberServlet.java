@@ -12,7 +12,7 @@ import java.io.IOException;
 @WebServlet(name = "AddMemberServlet", value = "/add_member")
 public class AddMemberServlet extends HttpServlet {
     private final UserDAO userDAO = new UserDAO();
-
+    private final int empId = 9;
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         String deptId = request.getParameter("deptId");
@@ -29,8 +29,6 @@ public class AddMemberServlet extends HttpServlet {
 
         String deptIdStr = request.getParameter("deptId");
 
-        System.out.println("Gia tri deptId nhan duoc: " + deptIdStr);
-
         if (deptIdStr != null && !deptIdStr.isEmpty()) {
             int deptId = Integer.parseInt(deptIdStr);
             String[] userIds = request.getParameterValues("userIds");
@@ -38,13 +36,12 @@ public class AddMemberServlet extends HttpServlet {
             if (userIds != null) {
                 for (String idStr : userIds) {
                     int userId = Integer.parseInt(idStr);
-                    userDAO.updateDepartmentMember(userId, deptId, true);
+                    userDAO.updateDepartmentMember(userId, deptId, empId,true);
                 }
             }
             // Redirect về đúng tên tham số 'id' mà trang Employee List đang đợi
             response.sendRedirect(request.getContextPath() + "/admin/departments/employees?id=" + deptId);
         } else {
-            System.out.println("Loi: deptId bi null");
             // Redirect về danh sách phòng ban nếu deptId bị lỗi
             response.sendRedirect(request.getContextPath() + "/admin/departments");
         }
