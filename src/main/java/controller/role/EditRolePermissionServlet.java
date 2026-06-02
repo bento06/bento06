@@ -5,14 +5,14 @@ import dao.RoleDAO;
 import model.Permission;
 import model.Role;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.*;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-@WebServlet("/admin/roles/edit-permissions")
+@WebServlet("/admin/roles/edit_permissions")
 public class EditRolePermissionServlet extends HttpServlet {
 
     private final RoleDAO roleDAO = new RoleDAO();
@@ -50,8 +50,8 @@ public class EditRolePermissionServlet extends HttpServlet {
         request.setAttribute("allPermissions", allPermissions);
         request.setAttribute("assignedPermissionIds", assignedPermissionIds);
 
-        request.getRequestDispatcher("/WEB-INF/views/role/edit-role-permission.jsp")
-               .forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/role/edit_role_permission.jsp")
+                .forward(request, response);
     }
 
     // POST: lưu permissions đã chọn
@@ -90,6 +90,7 @@ public class EditRolePermissionServlet extends HttpServlet {
 
         response.sendRedirect(request.getContextPath()
                 + "/admin/roles/permissions?roleId=" + roleId
-                + "&success=Cập nhật quyền thành công");
+                + "&success=Edit successfully");
+
     }
 }

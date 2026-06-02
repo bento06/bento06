@@ -3,13 +3,16 @@ package dao;
 import model.Permission;
 import util.DBConnection;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class PermissionDAO {
 
-    // Lấy tất cả permissions
+
     public List<Permission> getAllPermissions() {
         List<Permission> list = new ArrayList<>();
         String sql = "SELECT * FROM permissions ORDER BY id";
@@ -25,7 +28,7 @@ public class PermissionDAO {
         return list;
     }
 
-    // Lấy permissions của một role cụ thể
+
     public List<Permission> getPermissionsByRoleId(int roleId) {
         List<Permission> list = new ArrayList<>();
         String sql = "SELECT p.* FROM permissions p " +

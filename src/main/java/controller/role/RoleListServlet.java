@@ -3,9 +3,9 @@ package controller.role;
 import dao.RoleDAO;
 import model.Role;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.*;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.util.List;
 
@@ -18,10 +18,25 @@ public class RoleListServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        List<Role> roles = roleDAO.getAllRoles();
-        request.setAttribute("roles", roles);
+        // Lấy tham số tìm kiếm và lọc
+        String search = request.getParameter("search");
+        String statusParam = request.getParameter("status");
 
-        request.getRequestDispatcher("/WEB-INF/views/role/role-list.jsp")
-               .forward(request, response);
+        // Xác định giá trị active: null, true, false
+        Boolean active = null;
+        if (statusParam != null && !statusParam.isEmpty() && !statusParam.equals("all")) {
+            active = Boolean.parseBoolean(statusParam); // "true" hoặc "false"
+        }
+
+        // Gọi DAO
+        List<Role> roles = roleDAO.searchRoles(search, active);
+
+        // Truyền dữ liệu sang view
+        request.setAttribute("roles", roles);
+        request.setAttribute("search", search);
+        request.setAttribute("status", statusParam);
+
+        request.getRequestDispatcher("/WEB-INF/views/role/role_list.jsp")
+                .forward(request, response);
     }
 }
