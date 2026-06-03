@@ -68,9 +68,10 @@ public class EmployeeListServlet extends HttpServlet {
 
         List<User> employees = userDAO.getEmployeesByDepartment(id, keyword, status, sort, currentPage, PAGE_SIZE);
 
+        Integer managerUserId = department != null ? department.getManagerUserId() : null;
         for (User u : employees) {
-            boolean isManager = departmentDAO.isManager(u.getId());
-            u.setManager(isManager);
+            boolean isDepartmentManager = managerUserId != null && managerUserId == u.getId();
+            u.setManager(isDepartmentManager);
         }
 
         request.setAttribute("department", department);
