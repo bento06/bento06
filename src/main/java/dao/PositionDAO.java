@@ -10,6 +10,28 @@ import java.util.List;
 
 public class PositionDAO {
 
+    public List<Position> findAllPositions() {
+        List<Position> positions = new ArrayList<>();
+
+        String sql = """
+                    SELECT p.* FROM positions p ORDER BY p.id ASC
+                    """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                positions.add(mapResultSetToPosition(rs));
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return positions;
+    }
+
     public List<Position> findPositionsAdvanced(String keyword, String status, String sort) {
         List<Position> positions = new ArrayList<>();
 
@@ -30,9 +52,9 @@ public class PositionDAO {
         switch (sort != null ? sort : "") {
             case "name_asc":    sql.append("p.name ASC"); break;
             case "name_desc":   sql.append("p.name DESC"); break;
-            case "id_asc":      sql.append("p.id ASC"); break;
-            case "id_desc":
-            default:            sql.append("p.id DESC"); break;
+            case "id_desc":     sql.append("p.id DESC"); break;
+            case "id_asc":
+            default:            sql.append("p.id ASC"); break;
         }
 
         try (Connection conn = DBConnection.getConnection();
