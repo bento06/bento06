@@ -18,8 +18,8 @@ public class PositionDAO {
                     """;
 
         try (Connection conn = DBConnection.getConnection();
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
                 positions.add(mapResultSetToPosition(rs));
@@ -30,6 +30,86 @@ public class PositionDAO {
         }
 
         return positions;
+    }
+
+    public List<Position> findPositionsAdvanced(String keyword, Boolean active, String sort, int offset, int pageSize) {
+        List<Position> positions = new ArrayList<>();
+
+        String cleanKeyword = (keyword != null) ? keyword.trim() : "";
+
+        StringBuilder sql = new StringBuilder("SELECT p.* FROM positions p WHERE 1=1 ");
+
+        if (!cleanKeyword.isEmpty()) {
+            sql.append("AND p.name LIKE ? ");
+        }
+
+        if (active != null) {
+            sql.append("AND p.active = ? ");
+        }
+
+        sql.append("ORDER BY ");
+        switch (sort != null ? sort : "") {
+            case "name_asc":    sql.append("p.name ASC"); break;
+            case "name_desc":   sql.append("p.name DESC"); break;
+            case "id_asc":      sql.append("p.id ASC"); break;
+            case "id_desc":
+            default:            sql.append("p.id DESC"); break;
+        }
+
+        sql.append(" LIMIT ? OFFSET ?");
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            int paramIndex = 1;
+
+            if (!cleanKeyword.isEmpty()) {
+                ps.setString(paramIndex++, "%" + cleanKeyword + "%");
+            }
+
+            if (active != null) {
+                ps.setBoolean(paramIndex++, active);
+            }
+
+            ps.setInt(paramIndex++, pageSize);
+            ps.setInt(paramIndex++, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    positions.add(mapResultSetToPosition(rs));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return positions;
+    }
+
+    public int countPositions(String keyword, Boolean active) {
+        int totalRows = 0;
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM positions WHERE 1=1 ");
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append("AND name LIKE ? ");
+        }
+        if (active != null) { // Code ngắn gọn, không cần check trống chuỗi nữa
+            sql.append("AND active = ? ");
+        }
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            int paramIndex = 1;
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                ps.setString(paramIndex++, "%" + keyword.trim() + "%");
+            }
+            if (active != null) {
+                ps.setBoolean(paramIndex++, active);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) totalRows = rs.getInt(1);
+            }
+        } catch (Exception e) { e.printStackTrace(); }
+        return totalRows;
     }
 
     public Position findById(int id) {
@@ -53,73 +133,6 @@ public class PositionDAO {
         }
 
         return null;
-    }
-
-    public List<Position> searchPositions(String keyword) {
-        List<Position> positions = new ArrayList<>();
-
-        String sql = """
-                    SELECT p.*
-                    FROM positions p 
-                    WHERE p.name LIKE ? 
-                    ORDER BY p.id ASC
-                    """;
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            String searchKeyword = "%" + keyword + "%";
-            ps.setString(1, searchKeyword);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    positions.add(mapResultSetToPosition(rs));
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return positions;
-    }
-
-    public List<Position> findPositionsAdvanced(String keyword, String statusParam) {
-        List<Position> positions = new ArrayList<>();
-
-        StringBuilder sql = new StringBuilder("SELECT p.* FROM positions p WHERE 1=1 ");
-
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            sql.append("AND p.name LIKE ? ");
-        }
-
-        if (statusParam != null && !statusParam.trim().isEmpty()) {
-            sql.append("AND p.active = ? ");
-        }
-
-        sql.append("ORDER BY p.id ASC");
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-
-            int paramIndex = 1;
-
-            if (keyword != null && !keyword.trim().isEmpty()) {
-                ps.setString(paramIndex++, "%" + keyword.trim() + "%");
-            }
-
-            if (statusParam != null && !statusParam.trim().isEmpty()) {
-                boolean isActive = Boolean.parseBoolean(statusParam);
-                ps.setBoolean(paramIndex++, isActive);
-            }
-
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    positions.add(mapResultSetToPosition(rs));
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return positions;
     }
 
     public boolean addPosition(Position position) {
