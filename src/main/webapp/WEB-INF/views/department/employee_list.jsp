@@ -30,20 +30,29 @@
         </div>
     </c:if>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <form action="${pageContext.request.contextPath}/admin/departments/employees" method="get" style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
-            <input type="hidden" name="id" value="${param.id}">
+    <div class="employee-list-toolbar">
+        <form action="${pageContext.request.contextPath}/admin/departments/employees" method="get" class="employee-search-form">
+            <input type="hidden" name="id" value="${id}">
+            <input type="hidden" name="page" value="${currentPage}">
 
-            <input type="text" name="search" placeholder="Search by name or email..." value="${search}">
+            <input type="text" name="keyword" placeholder="Search by name or email..." value="${keyword}">
+
+            <select name="status">
+                <option value="all" ${status == 'all' ? 'selected' : ''}>All Status</option>
+                <option value="active" ${status == 'active' ? 'selected' : ''}>Active</option>
+                <option value="inactive" ${status == 'inactive' ? 'selected' : ''}>Inactive</option>
+            </select>
+
+            <select name="sort" onchange="this.form.submit()">
+                <option value="name_asc" ${sort == 'name_asc' ? 'selected' : ''}>Name A-Z</option>
+                <option value="name_desc" ${sort == 'name_desc' ? 'selected' : ''}>Name Z-A</option>
+            </select>
 
             <button type="submit" class="search-btn">Search</button>
-
-            <c:if test="${not empty search}">
-                <a href="${pageContext.request.contextPath}/admin/departments/employees?id=${param.id}" class="btn-reset">Clear</a>
-            </c:if>
+            <a href="${pageContext.request.contextPath}/admin/departments/employees?id=${id}" class="btn-reset">Clear</a>
         </form>
 
-        <a href="${pageContext.request.contextPath}/add_member?deptId=${param.id}" class="btn btn-primary" style="height: 36px; padding: 0 1.25rem; display: inline-flex; align-items: center; margin: 0; box-sizing: border-box;">Add Member</a>
+        <a href="${pageContext.request.contextPath}/add_member?deptId=${id}" class="btn btn-primary employee-add-member">Add Member</a>
     </div>
 
     <div class="table-wrapper">
@@ -61,9 +70,9 @@
             </tr>
             </thead>
             <tbody>
-            <c:forEach items="${userList}" var="user" varStatus="s">
+            <c:forEach items="${employees}" var="user" varStatus="s">
                 <tr>
-                    <td>${s.index + 1}</td>
+                    <td>${(currentPage - 1) * pageSize + s.index + 1}</td>
                     <td><strong>${user.fullName}</strong></td>
                     <td>${user.email}</td>
                     <td>
@@ -99,7 +108,7 @@
                     </td>
 
                     <td class="actions">
-                        <a href="${pageContext.request.contextPath}/move_member?userId=${user.id}&currentDeptId=${param.id}"
+                        <a href="${pageContext.request.contextPath}/move_member?userId=${user.id}&currentDeptId=${id}"
                            class="btn-move"
                                 <c:if test="${user.manager}">
                                     onclick="return confirmManagerMove();"
@@ -107,19 +116,73 @@
                             Move
                         </a>
 
-                        <a href="${pageContext.request.contextPath}/remove_member?userId=${user.id}&deptId=${param.id}"
+                        <a href="${pageContext.request.contextPath}/remove_member?userId=${user.id}&deptId=${id}"
                            class="btn-danger"
                            onclick="return confirm('Bạn chắc chắn muốn remove employee này khỏi phòng ban?')">Remove</a>
                     </td>
                 </tr>
             </c:forEach>
-            <c:if test="${empty userList}">
+            <c:if test="${empty employees}">
                 <tr>
                     <td colspan="8" class="empty-state">No employees found in this department.</td>
                 </tr>
             </c:if>
             </tbody>
         </table>
+    </div>
+
+    <div class="pagination employee-pagination">
+        <span class="page-link active">
+            <c:choose>
+                <c:when test="${totalPages == 0}">1/1</c:when>
+                <c:otherwise>${currentPage}/${totalPages}</c:otherwise>
+            </c:choose>
+        </span>
+
+        <c:if test="${totalPages > 1}">
+            <c:choose>
+                <c:when test="${currentPage <= 1}">
+                    <span class="page-link disabled">Previous</span>
+                </c:when>
+                <c:otherwise>
+                    <c:url var="previousPageUrl" value="/admin/departments/employees">
+                        <c:param name="id" value="${id}" />
+                        <c:param name="keyword" value="${keyword}" />
+                        <c:param name="status" value="${status}" />
+                        <c:param name="sort" value="${sort}" />
+                        <c:param name="page" value="${currentPage - 1}" />
+                    </c:url>
+                    <a href="${previousPageUrl}" class="page-link">Previous</a>
+                </c:otherwise>
+            </c:choose>
+
+            <c:forEach begin="1" end="${totalPages}" var="pageNumber">
+                <c:url var="pageUrl" value="/admin/departments/employees">
+                    <c:param name="id" value="${id}" />
+                    <c:param name="keyword" value="${keyword}" />
+                    <c:param name="status" value="${status}" />
+                    <c:param name="sort" value="${sort}" />
+                    <c:param name="page" value="${pageNumber}" />
+                </c:url>
+                <a href="${pageUrl}" class="page-link ${currentPage == pageNumber ? 'active' : ''}">${pageNumber}</a>
+            </c:forEach>
+
+            <c:choose>
+                <c:when test="${currentPage >= totalPages}">
+                    <span class="page-link disabled">Next</span>
+                </c:when>
+                <c:otherwise>
+                    <c:url var="nextPageUrl" value="/admin/departments/employees">
+                        <c:param name="id" value="${id}" />
+                        <c:param name="keyword" value="${keyword}" />
+                        <c:param name="status" value="${status}" />
+                        <c:param name="sort" value="${sort}" />
+                        <c:param name="page" value="${currentPage + 1}" />
+                    </c:url>
+                    <a href="${nextPageUrl}" class="page-link">Next</a>
+                </c:otherwise>
+            </c:choose>
+        </c:if>
     </div>
 </div>
 <script>
