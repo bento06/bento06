@@ -815,7 +815,18 @@ public class UserDAO {
         return user;
     }
 
-
+    public boolean deactivateUsersByDepartment(int departmentId) {
+        String sql = "UPDATE users SET active = 0 WHERE department_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, departmentId);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
     private LocalDateTime getNullableLocalDateTime(ResultSet rs, String columnName) throws Exception {
         Timestamp timestamp = rs.getTimestamp(columnName);
 
