@@ -15,9 +15,12 @@
 <div class="container" style="margin-top: 2rem;">
     <div class="page-header">
         <h2>Labor Contracts</h2>
-        <c:if test="${canCreateContract}">
-            <a href="${pageContext.request.contextPath}/contracts/add" class="btn-primary">Add Contract</a>
-        </c:if>
+        <div class="actions">
+            <a href="${pageContext.request.contextPath}/home" class="btn btn-secondary">Back to Home</a>
+            <c:if test="${canCreateContract}">
+                <a href="${pageContext.request.contextPath}/contracts/add" class="btn btn-primary">Add Contract</a>
+            </c:if>
+        </div>
     </div>
 
     <div class="search-filter">
@@ -105,6 +108,44 @@
             </c:if>
             </tbody>
         </table>
+    </div>
+
+    <div class="pagination-wrapper">
+        <div class="pagination-summary">
+            Showing page ${currentPage} of ${totalPages} (${totalRecords} contracts)
+        </div>
+
+        <c:if test="${totalPages > 1}">
+            <div class="pagination">
+                <c:url var="previousPageUrl" value="/contracts">
+                    <c:param name="search" value="${search}" />
+                    <c:param name="contractType" value="${contractType}" />
+                    <c:param name="status" value="${status}" />
+                    <c:param name="page" value="${currentPage - 1}" />
+                </c:url>
+                <a class="page-link ${currentPage == 1 ? 'disabled' : ''}"
+                   href="${currentPage == 1 ? '#' : previousPageUrl}">Previous</a>
+
+                <c:forEach begin="1" end="${totalPages}" var="pageNumber">
+                    <c:url var="pageUrl" value="/contracts">
+                        <c:param name="search" value="${search}" />
+                        <c:param name="contractType" value="${contractType}" />
+                        <c:param name="status" value="${status}" />
+                        <c:param name="page" value="${pageNumber}" />
+                    </c:url>
+                    <a class="page-link ${pageNumber == currentPage ? 'active' : ''}" href="${pageUrl}">${pageNumber}</a>
+                </c:forEach>
+
+                <c:url var="nextPageUrl" value="/contracts">
+                    <c:param name="search" value="${search}" />
+                    <c:param name="contractType" value="${contractType}" />
+                    <c:param name="status" value="${status}" />
+                    <c:param name="page" value="${currentPage + 1}" />
+                </c:url>
+                <a class="page-link ${currentPage == totalPages ? 'disabled' : ''}"
+                   href="${currentPage == totalPages ? '#' : nextPageUrl}">Next</a>
+            </div>
+        </c:if>
     </div>
 </div>
 
