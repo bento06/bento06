@@ -74,97 +74,17 @@
         </div>
 
        <div class="form-group">
-           <label for="departmentSelect">Department <span style="color: var(--danger);">*</span></label>
-           <select id="departmentSelect" name="departmentId" required class="form-select" onchange="updatePositions()">
-               <option value="" disabled selected>-- Select a department --</option>
-               <option value="1">Human Resources</option>
-               <option value="2">Information Technology</option>
-               <option value="3">Finance</option>
-               <option value="4">Sales</option>
+           <label for="roleId">Role <span style="color: var(--danger);">*</span></label>
+           <select id="roleId" name="roleId" required style="width: 100%; height: 38px; border-radius: 4px; border: 1px solid #ccc; padding: 0 10px;">
+               <option value="" disabled>-- Select a role --</option>
+
+               <c:forEach items="${roles}" var="role">
+                   <option value="${role.id}" ${role.id == userToUpdate.roleId ? 'selected' : ''}>
+                       ${role.name}
+                   </option>
+               </c:forEach>
            </select>
        </div>
-
-       <div class="form-group">
-           <label for="positionSelectDisplay">Position <span style="color: var(--danger);">*</span></label>
-           <select id="positionSelectDisplay" required class="form-select" disabled onchange="autoSetRoleAndPosition()">
-               <option value="" disabled selected>-- Select a position --</option>
-           </select>
-       </div>
-
-       <input type="hidden" id="positionId" name="positionId" value="${userToUpdate.positionId}">
-       <input type="hidden" id="roleId" name="roleId" value="${userToUpdate.roleId}">
-
-       <script>
-       const departmentData = {
-           "1": [
-               { id: 3, name: "HR Staff", roleId: 3 },
-               { id: 9, name: "Employee", roleId: 6 }
-           ],
-           "2": [
-               { id: 6, name: "Software Developer", roleId: 6 },
-               { id: 9, name: "Employee", roleId: 6 }
-           ],
-           "3": [
-               { id: 5, name: "Payroll Staff", roleId: 5 },
-               { id: 7, name: "Accountant", roleId: 6 },
-               { id: 9, name: "Employee", roleId: 6 }
-           ],
-           "4": [
-               { id: 8, name: "Sales Staff", roleId: 6 },
-               { id: 9, name: "Employee", roleId: 6 }
-           ]
-       };
-
-       function updatePositions(targetPositionId = null) {
-           const deptSelect = document.getElementById("departmentSelect");
-           const posSelectDisplay = document.getElementById("positionSelectDisplay");
-           const posHiddenInput = document.getElementById("positionId");
-           const roleHiddenInput = document.getElementById("roleId");
-
-           const selectedDept = deptSelect.value;
-
-           posSelectDisplay.innerHTML = '<option value="" disabled selected>-- Select a position --</option>';
-           posSelectDisplay.disabled = true;
-
-           if (selectedDept && departmentData[selectedDept]) {
-               departmentData[selectedDept].forEach(pos => {
-                   const option = document.createElement("option");
-                   option.value = pos.id;
-                   option.textContent = pos.name;
-                   option.setAttribute("data-role-id", pos.roleId);
-
-                   if (targetPositionId && pos.id == targetPositionId) {
-                       option.selected = true;
-                   }
-                   posSelectDisplay.appendChild(option);
-               });
-               posSelectDisplay.disabled = false;
-           }
-       }
-
-       function autoSetRoleAndPosition() {
-           const posSelectDisplay = document.getElementById("positionSelectDisplay");
-           const posHiddenInput = document.getElementById("positionId");
-           const roleHiddenInput = document.getElementById("roleId");
-
-           const selectedOption = posSelectDisplay.options[posSelectDisplay.selectedIndex];
-           if (selectedOption) {
-               const targetRoleId = selectedOption.getAttribute("data-role-id");
-               posHiddenInput.value = posSelectDisplay.value;
-               roleHiddenInput.value = targetRoleId;
-           }
-       }
-
-       window.onload = function() {
-           const currentDeptId = "${userToUpdate.departmentId}";
-           const currentPosId = "${userToUpdate.positionId}";
-
-           if (currentDeptId && currentDeptId !== "0") {
-               document.getElementById("departmentSelect").value = currentDeptId;
-               updatePositions(currentPosId);
-           }
-       };
-       </script>
 
         <div class="form-group">
             <label>Active Status</label>
