@@ -83,11 +83,15 @@
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Department:</span>
-                    <span class="detail-value"><strong>${user.departmentName}</strong></span>
+                    <span class="detail-value">
+                        <strong>${not empty user.departmentName ? user.departmentName : 'N/A'}</strong>
+                    </span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Position:</span>
-                    <span class="detail-value"><strong>${user.positionName}</strong></span>
+                    <span class="detail-value">
+                        <strong>${not empty user.positionName ? user.positionName : 'N/A'}</strong>
+                    </span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Role:</span>
