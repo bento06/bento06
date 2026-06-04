@@ -87,22 +87,21 @@
         <input type="hidden" id="roleId" name="roleId" value="">
 
         <script>
-        // Cấu trúc dữ liệu ĐÃ XÓA BỎ toàn bộ chức vụ liên quan đến Manager
         const departmentData = {
-            "1": [ // Human Resources (Đã xóa HR Manager)
+            "1": [
                 { id: 3, name: "HR Staff", roleId: 3 },
                 { id: 9, name: "Employee", roleId: 6 }
             ],
-            "2": [ // Information Technology (Đã xóa Department Manager)
+            "2": [
                 { id: 6, name: "Software Developer", roleId: 6 },
                 { id: 9, name: "Employee", roleId: 6 }
             ],
-            "3": [ // Finance (Đã xóa Department Manager)
+            "3": [
                 { id: 5, name: "Payroll Staff", roleId: 5 },
                 { id: 7, name: "Accountant", roleId: 6 },
                 { id: 9, name: "Employee", roleId: 6 }
             ],
-            "4": [ // Sales (Đã xóa Department Manager)
+            "4": [
                 { id: 8, name: "Sales Staff", roleId: 6 },
                 { id: 9, name: "Employee", roleId: 6 }
             ]
@@ -116,7 +115,6 @@
 
             const selectedDept = deptSelect.value;
 
-            // Reset sạch các ô nhập ngầm
             posSelectDisplay.innerHTML = '<option value="" disabled selected>-- Select a position --</option>';
             posSelectDisplay.disabled = true;
             posHiddenInput.value = "";
@@ -134,7 +132,6 @@
             }
         }
 
-        // Hàm này vừa kích hoạt sẽ ghi đồng thời cả positionId và roleId thực tế vào thẻ hidden
         function autoSetRoleAndPosition() {
             const posSelectDisplay = document.getElementById("positionSelectDisplay");
             const posHiddenInput = document.getElementById("positionId");
@@ -144,11 +141,8 @@
             if (selectedOption) {
                 const targetRoleId = selectedOption.getAttribute("data-role-id");
 
-                // Gán giá trị thẳng vào 2 thẻ hidden
                 posHiddenInput.value = posSelectDisplay.value;
                 roleHiddenInput.value = targetRoleId;
-
-                console.log("Đã gán ngầm lên Form -> Position ID:", posHiddenInput.value, " | Role ID:", roleHiddenInput.value);
             }
         }
         </script>

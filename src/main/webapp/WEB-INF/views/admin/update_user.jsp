@@ -95,29 +95,26 @@
        <input type="hidden" id="roleId" name="roleId" value="${userToUpdate.roleId}">
 
        <script>
-       // Khối dữ liệu hardcode đồng bộ y hệt bên trang Add
-       // Cấu trúc dữ liệu ĐÃ XÓA BỎ toàn bộ chức vụ liên quan đến Manager
        const departmentData = {
-           "1": [ // Human Resources (Đã xóa HR Manager)
+           "1": [
                { id: 3, name: "HR Staff", roleId: 3 },
                { id: 9, name: "Employee", roleId: 6 }
            ],
-           "2": [ // Information Technology (Đã xóa Department Manager)
+           "2": [
                { id: 6, name: "Software Developer", roleId: 6 },
                { id: 9, name: "Employee", roleId: 6 }
            ],
-           "3": [ // Finance (Đã xóa Department Manager)
+           "3": [
                { id: 5, name: "Payroll Staff", roleId: 5 },
                { id: 7, name: "Accountant", roleId: 6 },
                { id: 9, name: "Employee", roleId: 6 }
            ],
-           "4": [ // Sales (Đã xóa Department Manager)
+           "4": [
                { id: 8, name: "Sales Staff", roleId: 6 },
                { id: 9, name: "Employee", roleId: 6 }
            ]
        };
 
-       // Hàm 1: Đổ dữ liệu chức vụ dựa trên phòng ban được chọn
        function updatePositions(targetPositionId = null) {
            const deptSelect = document.getElementById("departmentSelect");
            const posSelectDisplay = document.getElementById("positionSelectDisplay");
@@ -126,7 +123,6 @@
 
            const selectedDept = deptSelect.value;
 
-           // Reset giao diện hiển thị vị trí
            posSelectDisplay.innerHTML = '<option value="" disabled selected>-- Select a position --</option>';
            posSelectDisplay.disabled = true;
 
@@ -137,7 +133,6 @@
                    option.textContent = pos.name;
                    option.setAttribute("data-role-id", pos.roleId);
 
-                   // Nếu trùng với ID chức vụ cần chọn sẵn (khi load trang)
                    if (targetPositionId && pos.id == targetPositionId) {
                        option.selected = true;
                    }
@@ -147,7 +142,6 @@
            }
        }
 
-       // Hàm 2: Kích hoạt khi người dùng chủ động click đổi Chức vụ
        function autoSetRoleAndPosition() {
            const posSelectDisplay = document.getElementById("positionSelectDisplay");
            const posHiddenInput = document.getElementById("positionId");
@@ -161,16 +155,12 @@
            }
        }
 
-       // ĐOẠN KHÁC BIỆT: Tự động chạy ngay khi vừa mở trang Update lên
        window.onload = function() {
-           // Lấy giá trị ID phòng ban và chức vụ hiện tại của User từ EL biểu thức JSP
            const currentDeptId = "${userToUpdate.departmentId}";
            const currentPosId = "${userToUpdate.positionId}";
 
            if (currentDeptId && currentDeptId !== "0") {
-               // 1. Chọn sẵn phòng ban trên UI
                document.getElementById("departmentSelect").value = currentDeptId;
-               // 2. Kích hoạt đổ chức vụ của phòng ban đó và chọn sẵn chức vụ hiện tại
                updatePositions(currentPosId);
            }
        };
