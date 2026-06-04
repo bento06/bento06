@@ -1014,11 +1014,13 @@ public class UserDAO {
         }
     }
 
-    // Lấy danh sách nhân viên chưa thuộc phòng ban nào
+    // Lấy danh sách nhân viên chưa thuộc phòng ban nào và đang Active
     public List<User> getUnassignedUsers() {
         List<User> list = new ArrayList<>();
         // department_id IS NULL hoặc có thể là 0 tùy vào cách bạn thiết kế DB
-        String sql = "SELECT id, full_name FROM users WHERE department_id IS NULL OR department_id = 0";
+        String sql = "SELECT id, full_name FROM users " +
+                "WHERE (department_id IS NULL OR department_id = 0)" +
+                "AND active = 1";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
