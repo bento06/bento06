@@ -50,7 +50,7 @@ public class UserDAO {
                 FROM users u
                 JOIN roles r ON u.role_id = r.id
                 LEFT JOIN departments d ON u.department_id = d.id
-                JOIN positions p ON u.position_id = p.id
+                LEFT JOIN positions p ON u.position_id = p.id
                 WHERE u.id = ?
                 """;
 
@@ -333,11 +333,9 @@ public class UserDAO {
                     address,
                     avatar_url,
                     role_id,
-                    department_id,
-                    position_id,
                     active
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
 
         try (Connection conn = DBConnection.getConnection();
@@ -352,9 +350,7 @@ public class UserDAO {
             ps.setString(7, user.getAddress());
             ps.setString(8, user.getAvatarUrl());
             ps.setInt(9, user.getRoleId());
-            ps.setInt(10, user.getDepartmentId());
-            ps.setInt(11, user.getPositionId());
-            ps.setBoolean(12, user.isActive());
+            ps.setBoolean(10, user.isActive());
 
             return ps.executeUpdate() > 0;
 
@@ -377,8 +373,6 @@ public class UserDAO {
                     address = ?,
                     avatar_url = ?,
                     role_id = ?,
-                    department_id = ?,
-                    position_id = ?,
                     active = ?
                 WHERE id = ?
                 """;
@@ -394,10 +388,8 @@ public class UserDAO {
             ps.setString(6, user.getAddress());
             ps.setString(7, user.getAvatarUrl());
             ps.setInt(8, user.getRoleId());
-            ps.setInt(9, user.getDepartmentId());
-            ps.setInt(10, user.getPositionId());
-            ps.setBoolean(11, user.isActive());
-            ps.setInt(12, user.getId());
+            ps.setBoolean(9, user.isActive());
+            ps.setInt(10, user.getId());
 
             return ps.executeUpdate() > 0;
 
