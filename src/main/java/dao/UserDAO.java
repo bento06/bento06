@@ -401,8 +401,7 @@ public class UserDAO {
     public boolean updateProfile(User user) {
         String sql = """
                 UPDATE users
-                SET full_name = ?,
-                    phone = ?,
+                SET phone = ?,
                     gender = ?,
                     date_of_birth = ?,
                     address = ?,
@@ -413,13 +412,12 @@ public class UserDAO {
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, user.getFullName());
-            ps.setString(2, user.getPhone());
-            ps.setString(3, user.getGender());
-            setNullableTimestamp(ps, 4, user.getDateOfBirth());
-            ps.setString(5, user.getAddress());
-            ps.setString(6, user.getAvatarUrl());
-            ps.setInt(7, user.getId());
+            ps.setString(1, user.getPhone());
+            ps.setString(2, user.getGender());
+            setNullableTimestamp(ps, 3, user.getDateOfBirth());
+            ps.setString(4, user.getAddress());
+            ps.setString(5, user.getAvatarUrl());
+            ps.setInt(6, user.getId());
 
             return ps.executeUpdate() > 0;
 

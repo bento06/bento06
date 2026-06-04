@@ -3,12 +3,32 @@ package service;
 import dao.UserDAO;
 import model.User;
 
+import java.time.LocalDate;
+
 public class UserService {
 
     private final UserDAO userDAO = new UserDAO();
 
     public User getProfile(int userId) {
         return userDAO.findProfileById(userId);
+    }
+
+    public String updateProfile(User user) {
+        if (user.getPhone() != null && user.getPhone().length() > 20) {
+            return "Phone must be 20 characters or fewer.";
+        }
+
+        if (user.getAvatarUrl() != null && user.getAvatarUrl().length() > 500) {
+            return "Avatar URL must be 500 characters or fewer.";
+        }
+
+        if (user.getDateOfBirth() != null
+                && user.getDateOfBirth().toLocalDate().isAfter(LocalDate.now())) {
+            return "Date of birth cannot be in the future.";
+        }
+
+        boolean updated = userDAO.updateProfile(user);
+        return updated ? null : "Update profile failed.";
     }
 
     public String changePassword(int userId, String oldPassword, String newPassword, String confirmPassword) {
