@@ -5,47 +5,189 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Labor Contracts | HRM</title>
+    <title>Contracts | HRSync</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/assets/css/style.css">
 </head>
-<body>
+<body class="dashboard-body">
 
-<jsp:include page="/WEB-INF/views/common/navbar.jsp" />
+<div class="dashboard-wrapper">
+    <jsp:include page="/WEB-INF/views/common/sidebar.jsp" />
+    
+    <main class="page-wrapper">
+        <div class="list-header">
+            <div class="list-header-left">
+                <h1 class="page-title">Contracts</h1>
+                <div class="list-search">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                    <form action="${pageContext.request.contextPath}/contracts" method="GET" style="display: flex; flex: 1; gap: 0.5rem;">
+                        <input type="text" name="search" placeholder="Search code or employee..." value="${search}">
+                    </form>
+                </div>
+            </div>
+            <div class="list-header-right">
+                <c:if test="${canCreateContract}">
+                    <a href="${pageContext.request.contextPath}/contracts/add" class="btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Contract
+                    </a>
+                </c:if>
+            </div>
+        </div>
 
-<div class="container" style="margin-top: 2rem;">
-    <div class="page-header">
-        <h2>Labor Contracts</h2>
-        <div class="actions">
-            <a href="${pageContext.request.contextPath}/home" class="btn btn-secondary">Back to Home</a>
-            <c:if test="${canCreateContract}">
-                <a href="${pageContext.request.contextPath}/contracts/add" class="btn btn-primary">Add Contract</a>
+        <div class="list-content">
+            <div style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <form action="${pageContext.request.contextPath}/contracts" method="GET" style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <select name="contractType" class="filter-select">
+                        <option value="all" ${empty contractType ? 'selected' : ''}>All Types</option>
+                        <option value="FIXED_TERM" ${contractType == 'FIXED_TERM' ? 'selected' : ''}>Fixed Term</option>
+                        <option value="INDEFINITE_TERM" ${contractType == 'INDEFINITE_TERM' ? 'selected' : ''}>Indefinite Term</option>
+                        <option value="PROBATION" ${contractType == 'PROBATION' ? 'selected' : ''}>Probation</option>
+                        <option value="PART_TIME" ${contractType == 'PART_TIME' ? 'selected' : ''}>Part Time</option>
+                    </select>
+                    <select name="status" class="filter-select">
+                        <option value="all" ${empty status ? 'selected' : ''}>All Status</option>
+                        <option value="ACTIVE" ${status == 'ACTIVE' ? 'selected' : ''}>Active</option>
+                        <option value="EXPIRED" ${status == 'EXPIRED' ? 'selected' : ''}>Expired</option>
+                        <option value="TERMINATED" ${status == 'TERMINATED' ? 'selected' : ''}>Terminated</option>
+                    </select>
+                    <button type="submit" class="btn-secondary btn-sm">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="m21 21-4.35-4.35"></path>
+                        </svg>
+                        Search
+                    </button>
+                    <a href="${pageContext.request.contextPath}/contracts" class="btn-secondary btn-sm">Clear Filters</a>
+                </form>
+            </div>
+
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Employee</th>
+                    <th>Type</th>
+                    <th>Start Date</th>
+                    <th>End Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <c:forEach items="${contracts}" var="contract">
+                    <tr>
+                        <td><strong>${contract.contractCode}</strong></td>
+                        <td>
+                            ${contract.employeeName}
+                            <c:if test="${not empty contract.employeeCode}">
+                                (${contract.employeeCode})
+                            </c:if>
+                        </td>
+                        <td>${contract.contractType}</td>
+                        <td>${contract.startDate}</td>
+                        <td>
+                            <c:choose>
+                                <c:when test="${not empty contract.endDate}">${contract.endDate}</c:when>
+                                <c:otherwise>–</c:otherwise>
+                            </c:choose>
+                        </td>
+                        <td>
+                            <c:choose>
+                                <c:when test="${contract.status == 'ACTIVE'}">
+                                    <span class="badge badge-success">Active</span>
+                                </c:when>
+                                <c:when test="${contract.status == 'TERMINATED'}">
+                                    <span class="badge badge-danger">Terminated</span>
+                                </c:when>
+                                <c:otherwise>
+                                    <span class="badge badge-warning">${contract.status}</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="${pageContext.request.contextPath}/contracts/detail?id=${contract.id}" class="btn-view btn-sm">View</a>
+                                <c:if test="${canUpdateContract && contract.status != 'TERMINATED'}">
+                                    <a href="${pageContext.request.contextPath}/contracts/update?id=${contract.id}" class="btn-edit btn-sm">Edit</a>
+                                </c:if>
+                            </div>
+                        </td>
+                    </tr>
+                </c:forEach>
+                <c:if test="${empty contracts}">
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem;">
+                            <div class="empty-state">
+                                <p style="color: #A6B0CF; margin: 0;">No contracts found</p>
+                            </div>
+                        </td>
+                    </tr>
+                </c:if>
+                </tbody>
+            </table>
+
+            <c:if test="${totalPages > 1}">
+                <div class="pagination-wrapper">
+                    <span class="pagination-info">
+                        Page ${currentPage} of ${totalPages}
+                    </span>
+
+                    <c:choose>
+                        <c:when test="${currentPage <= 1}">
+                            <button class="pagination-btn disabled" disabled>← Previous</button>
+                        </c:when>
+                        <c:otherwise>
+                            <c:url var="previousPageUrl" value="/contracts">
+                                <c:param name="search" value="${search}" />
+                                <c:param name="contractType" value="${contractType}" />
+                                <c:param name="status" value="${status}" />
+                                <c:param name="page" value="${currentPage - 1}" />
+                            </c:url>
+                            <a href="${previousPageUrl}" class="pagination-btn">← Previous</a>
+                        </c:otherwise>
+                    </c:choose>
+
+                    <c:forEach begin="1" end="${totalPages}" var="pageNumber">
+                        <c:url var="pageUrl" value="/contracts">
+                            <c:param name="search" value="${search}" />
+                            <c:param name="contractType" value="${contractType}" />
+                            <c:param name="status" value="${status}" />
+                            <c:param name="page" value="${pageNumber}" />
+                        </c:url>
+                        <a href="${pageUrl}" class="pagination-btn ${pageNumber == currentPage ? 'active' : ''}">${pageNumber}</a>
+                    </c:forEach>
+
+                    <c:choose>
+                        <c:when test="${currentPage >= totalPages}">
+                            <button class="pagination-btn disabled" disabled>Next →</button>
+                        </c:when>
+                        <c:otherwise>
+                            <c:url var="nextPageUrl" value="/contracts">
+                                <c:param name="search" value="${search}" />
+                                <c:param name="contractType" value="${contractType}" />
+                                <c:param name="status" value="${status}" />
+                                <c:param name="page" value="${currentPage + 1}" />
+                            </c:url>
+                            <a href="${nextPageUrl}" class="pagination-btn">Next →</a>
+                        </c:otherwise>
+                    </c:choose>
+                </div>
             </c:if>
         </div>
-    </div>
+    </main>
+</div>
 
-    <div class="search-filter">
-        <form action="${pageContext.request.contextPath}/contracts" method="get">
-            <input type="text" name="search" placeholder="Search code, employee, or email..." value="${search}">
-
-            <select name="contractType">
-                <option value="all" ${empty contractType ? 'selected' : ''}>All Types</option>
-                <option value="FIXED_TERM" ${contractType == 'FIXED_TERM' ? 'selected' : ''}>FIXED_TERM</option>
-                <option value="INDEFINITE_TERM" ${contractType == 'INDEFINITE_TERM' ? 'selected' : ''}>INDEFINITE_TERM</option>
-                <option value="PROBATION" ${contractType == 'PROBATION' ? 'selected' : ''}>PROBATION</option>
-                <option value="PART_TIME" ${contractType == 'PART_TIME' ? 'selected' : ''}>PART_TIME</option>
-            </select>
-
-            <select name="status">
-                <option value="all" ${empty status ? 'selected' : ''}>All Status</option>
-                <option value="ACTIVE" ${status == 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
-                <option value="EXPIRED" ${status == 'EXPIRED' ? 'selected' : ''}>EXPIRED</option>
-                <option value="TERMINATED" ${status == 'TERMINATED' ? 'selected' : ''}>TERMINATED</option>
-            </select>
-
-            <button type="submit" class="btn btn-primary">Search</button>
-            <a href="${pageContext.request.contextPath}/contracts" class="btn btn-reset">Clear</a>
-        </form>
-    </div>
+</body>
+</html>
 
     <div class="table-wrapper">
         <table>
