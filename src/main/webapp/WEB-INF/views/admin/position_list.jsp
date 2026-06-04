@@ -93,10 +93,11 @@
         <table>
             <thead>
                 <tr>
-                    <th>ID</th> <th>Name</th>
+                    <th>ID</th>
+                    <th>Position Name</th>
                     <th>Description</th>
                     <th>Status</th>
-                    <th>Last Updated</th>
+                    <th>Department</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -117,7 +118,14 @@
                             </c:choose>
                         </td>
                         <td>
-                            ${position.updatedAt != null ? position.updatedAt.toLocalDate() : (position.createdAt != null ? position.createdAt.toLocalDate() : '')}
+                            <c:choose>
+                                <c:when test="${not empty position.departmentName}">
+                                    <span class="badge-dept">${position.departmentName}</span>
+                                </c:when>
+                                <c:otherwise>
+                                    <span style="color: #999; font-style: italic;">No Department</span>
+                                </c:otherwise>
+                            </c:choose>
                         </td>
                         <td>
                             <div class="actions">

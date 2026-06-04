@@ -1,4 +1,5 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -22,6 +23,18 @@
     </c:if>
 
     <form action="${pageContext.request.contextPath}/position/add" method="post">
+        <div class="form-group">
+            <label for="departmentId">Department <span style="color: var(--danger);">*</span></label>
+            <select id="departmentId" name="departmentId" required style="width: 100%; height: 38px; border-radius: 4px; border: 1px solid #ccc; padding: 0 10px;">
+                <option value="" disabled selected>-- Select a department --</option>
+                <c:forEach items="${departments}" var="dept">
+                    <option value="${dept.id}" ${dept.id == param.departmentId ? 'selected' : ''}>
+                        ${dept.name}
+                    </option>
+                </c:forEach>
+            </select>
+        </div>
+
         <div class="form-group">
             <label for="name">Name <span style="color: var(--danger);">*</span></label>
             <input type="text" id="name" name="name" placeholder="Enter position name" value="${newPosition.name}" required>

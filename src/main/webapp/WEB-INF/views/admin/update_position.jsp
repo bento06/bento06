@@ -26,6 +26,18 @@
         <input type="hidden" name="id" value="${position.id}">
 
         <div class="form-group">
+            <label for="departmentId">Department <span style="color: var(--danger);">*</span></label>
+            <select id="departmentId" name="departmentId" required style="width: 100%; height: 38px; border-radius: 4px; border: 1px solid #ccc; padding: 0 10px;">
+                <option value="" disabled>-- Select a department --</option>
+                <c:forEach items="${departments}" var="dept">
+                    <option value="${dept.id}" ${dept.id == position.departmentId ? 'selected' : ''}>
+                        ${dept.name}
+                    </option>
+                </c:forEach>
+            </select>
+        </div>
+
+        <div class="form-group">
             <label for="name">Name <span style="color: var(--danger);">*</span></label>
             <input type="text" id="name" name="name" placeholder="Enter position name" value="${position.name}" required>
         </div>
