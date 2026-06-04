@@ -45,12 +45,14 @@ public class DeptToggleStatusServlet extends HttpServlet {
 
         if (updated) {
             if (!newStatus) {
-                // Khi deactive phòng ban: đá toàn bộ user ra khỏi phòng ban (set department_id = NULL)
+                // Deactivate: đá toàn bộ thành viên khỏi phòng ban
                 userDAO.removeDepartmentFromUsers(id);
-                // Đồng thời xóa manager của phòng ban (nếu có)
-                departmentDAO.updateManager(id, 0); // hoặc dùng method set null, tôi sẽ thêm bên dưới
+                // Xóa trưởng phòng (set manager_user_id = NULL)
+                departmentDAO.removeManager(id);
             }
-            String msg = newStatus ? "Department activated successfully" : "Department deactivated successfully. All members have been removed from the department.";
+            String msg = newStatus
+                    ? "Department activated successfully"
+                    : "Department deactivated successfully. All members removed and manager cleared.";
             response.sendRedirect(redirectURL + "?success=" + java.net.URLEncoder.encode(msg, "UTF-8"));
         } else {
             response.sendRedirect(redirectURL + "?error=Toggle failed");

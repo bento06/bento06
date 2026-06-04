@@ -83,6 +83,7 @@ public class DepartmentDAO {
         }
         return false;
     }
+
     public Department getDepartmentByIdWithManager(int id) {
         String sql = "SELECT d.*, u.full_name AS manager_name FROM departments d " +
                 "LEFT JOIN users u ON d.manager_user_id = u.id WHERE d.id = ?";
@@ -147,6 +148,7 @@ public class DepartmentDAO {
         }
         return -1;
     }
+
 
     public boolean isManager(int userId) {
         String sql = "SELECT COUNT(*) FROM departments WHERE manager_user_id = ?";

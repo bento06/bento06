@@ -1051,6 +1051,7 @@ public class UserDAO {
         }
     }
 
+
     public boolean removeDepartmentFromUsers(int departmentId) {
         String sql = "UPDATE users SET department_id = NULL WHERE department_id = ?";
         try (Connection conn = DBConnection.getConnection();
