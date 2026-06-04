@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,10 +14,11 @@
 <jsp:include page="/WEB-INF/views/common/navbar.jsp" />
 
 <div class="container" style="margin-top: 2rem;">
+    <c:set var="isUpdate" value="${not empty contract.id && contract.id > 0}" />
     <a class="back-link" href="${pageContext.request.contextPath}/contracts">Back to contract list</a>
     <h2 class="form-title">
         <c:choose>
-            <c:when test="${not empty contract.id && contract.id > 0}">Update Contract</c:when>
+            <c:when test="${isUpdate}">Update Contract</c:when>
             <c:otherwise>Add Contract</c:otherwise>
         </c:choose>
     </h2>
@@ -26,25 +28,43 @@
     </c:if>
 
     <form action="${formAction}" method="post">
-        <c:if test="${not empty contract.id && contract.id > 0}">
+        <c:if test="${isUpdate}">
             <input type="hidden" name="id" value="${contract.id}">
         </c:if>
 
         <div class="form-group">
             <label for="userId">Employee <span style="color: var(--danger);">*</span></label>
-            <select id="userId" name="userId" class="form-select" required>
-                <option value="">Select employee</option>
-                <c:forEach items="${users}" var="user">
-                    <option value="${user.id}" ${contract.userId == user.id ? 'selected' : ''}>
-                        ${user.fullName} - ${user.email}
-                    </option>
-                </c:forEach>
-            </select>
+            <c:choose>
+                <c:when test="${isUpdate}">
+                    <c:choose>
+                        <c:when test="${not empty contract.employeeName}">
+                            <c:set var="readonlyEmployeeDisplay">
+                                ${contract.employeeName}<c:if test="${not empty contract.employeeCode}"> (${contract.employeeCode})</c:if><c:if test="${not empty contract.employeeEmail}"> - ${contract.employeeEmail}</c:if>
+                            </c:set>
+                        </c:when>
+                        <c:otherwise>
+                            <c:set var="readonlyEmployeeDisplay" value="Employee ID ${contract.userId}" />
+                        </c:otherwise>
+                    </c:choose>
+                    <input type="hidden" id="userId" name="userId" value="${contract.userId}">
+                    <input type="text" value="${fn:trim(readonlyEmployeeDisplay)}" readonly>
+                </c:when>
+                <c:otherwise>
+                    <select id="userId" name="userId" class="form-select" required>
+                        <option value="">Select employee</option>
+                        <c:forEach items="${users}" var="user">
+                            <option value="${user.id}" ${contract.userId == user.id ? 'selected' : ''}>
+                                ${user.fullName} - ${user.email}
+                            </option>
+                        </c:forEach>
+                    </select>
+                </c:otherwise>
+            </c:choose>
         </div>
 
         <div class="form-group">
             <label for="contractCode">Contract Code <span style="color: var(--danger);">*</span></label>
-            <input type="text" id="contractCode" name="contractCode" value="${contract.contractCode}" required>
+            <input type="text" id="contractCode" name="contractCode" value="${contract.contractCode}" required ${isUpdate ? 'readonly' : ''}>
         </div>
 
         <div class="form-group">
@@ -62,7 +82,7 @@
             <input type="date" id="startDate" name="startDate" value="${contract.startDate}" required>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="endDateGroup">
             <label for="endDate">End Date</label>
             <input type="date" id="endDate" name="endDate" value="${contract.endDate}">
         </div>
@@ -117,5 +137,24 @@
     </form>
 </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const contractType = document.getElementById('contractType');
+        const endDateGroup = document.getElementById('endDateGroup');
+        const endDate = document.getElementById('endDate');
+
+        function toggleEndDate() {
+            const isIndefiniteTerm = contractType.value === 'INDEFINITE_TERM';
+            endDateGroup.style.display = isIndefiniteTerm ? 'none' : '';
+            endDate.disabled = isIndefiniteTerm;
+            if (isIndefiniteTerm) {
+                endDate.value = '';
+            }
+        }
+
+        contractType.addEventListener('change', toggleEndDate);
+        toggleEndDate();
+    });
+</script>
 </body>
 </html>
