@@ -87,25 +87,22 @@
         <input type="hidden" id="roleId" name="roleId" value="">
 
         <script>
+        // Cấu trúc dữ liệu ĐÃ XÓA BỎ toàn bộ chức vụ liên quan đến Manager
         const departmentData = {
-            "1": [
-                { id: 2, name: "HR Manager", roleId: 2 },
+            "1": [ // Human Resources (Đã xóa HR Manager)
                 { id: 3, name: "HR Staff", roleId: 3 },
                 { id: 9, name: "Employee", roleId: 6 }
             ],
-            "2": [
-                { id: 4, name: "Department Manager", roleId: 4 },
+            "2": [ // Information Technology (Đã xóa Department Manager)
                 { id: 6, name: "Software Developer", roleId: 6 },
                 { id: 9, name: "Employee", roleId: 6 }
             ],
-            "3": [
-                { id: 4, name: "Department Manager", roleId: 4 },
+            "3": [ // Finance (Đã xóa Department Manager)
                 { id: 5, name: "Payroll Staff", roleId: 5 },
                 { id: 7, name: "Accountant", roleId: 6 },
                 { id: 9, name: "Employee", roleId: 6 }
             ],
-            "4": [
-                { id: 4, name: "Department Manager", roleId: 4 },
+            "4": [ // Sales (Đã xóa Department Manager)
                 { id: 8, name: "Sales Staff", roleId: 6 },
                 { id: 9, name: "Employee", roleId: 6 }
             ]
