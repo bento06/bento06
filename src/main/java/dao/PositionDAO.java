@@ -10,81 +10,147 @@ import java.util.List;
 
 public class PositionDAO {
 
-    public List<Position> findAllPositions() {
-        List<Position> positions = new ArrayList<>();
-
+    public List<Position> getAllPositions() {
+        List<Position> list = new ArrayList<>();
         String sql = """
-                    SELECT p.* FROM positions p ORDER BY p.id ASC
-                    """;
+                SELECT p.*, d.name AS department_name
+                FROM positions p
+                LEFT JOIN department_positions dp ON p.id = dp.position_id
+                LEFT JOIN departments d ON dp.department_id = d.id
+                ORDER BY p.id 
+                """;
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
 
             while (rs.next()) {
-                positions.add(mapResultSetToPosition(rs));
-            }
+                Position pos = new Position();
+                pos.setId(rs.getInt("id"));
+                pos.setName(rs.getString("name"));
+                pos.setDescription(rs.getString("description"));
+                pos.setActive(rs.getBoolean("active"));
+                pos.setCreatedAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null);
+                pos.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
 
+                pos.setDepartmentName(rs.getString("department_name"));
+
+                list.add(pos);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        return positions;
+        return list;
     }
 
-    public List<Position> findPositionsAdvanced(String keyword, Boolean active, String sort, int offset, int pageSize) {
-        List<Position> positions = new ArrayList<>();
-
-        String cleanKeyword = (keyword != null) ? keyword.trim() : "";
-
-        StringBuilder sql = new StringBuilder("SELECT p.* FROM positions p WHERE 1=1 ");
-
-        if (!cleanKeyword.isEmpty()) {
-            sql.append("AND p.name LIKE ? ");
-        }
-
-        if (active != null) {
-            sql.append("AND p.active = ? ");
-        }
-
-        sql.append("ORDER BY ");
-        switch (sort != null ? sort : "") {
-            case "name_asc":    sql.append("p.name ASC"); break;
-            case "name_desc":   sql.append("p.name DESC"); break;
-            case "id_asc":      sql.append("p.id ASC"); break;
-            case "id_desc":
-            default:            sql.append("p.id DESC"); break;
-        }
-
-        sql.append(" LIMIT ? OFFSET ?");
-
+    public Position findByName(String name) {
+        String sql = "SELECT * FROM positions WHERE name = ?";
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-
-            int paramIndex = 1;
-
-            if (!cleanKeyword.isEmpty()) {
-                ps.setString(paramIndex++, "%" + cleanKeyword + "%");
-            }
-
-            if (active != null) {
-                ps.setBoolean(paramIndex++, active);
-            }
-
-            ps.setInt(paramIndex++, pageSize);
-            ps.setInt(paramIndex++, offset);
-
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, name);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    positions.add(mapResultSetToPosition(rs));
+                if (rs.next()) {
+                    return mapResultSetToPosition(rs);
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return positions;
+        return null;
     }
 
+    public List<Position> findPositionsAdvanced(String keyword, Boolean active, String sort, int offset, int limit) {
+        List<Position> list = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder("""
+            SELECT p.*, GROUP_CONCAT(d.name SEPARATOR ', ') AS department_name
+            FROM positions p
+            LEFT JOIN department_positions dp ON p.id = dp.position_id
+            LEFT JOIN departments d ON dp.department_id = d.id
+            WHERE 1=1
+            """);
+
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            sql.append(" AND p.name LIKE ? ");
+        }
+        if (active != null) {
+            sql.append(" AND p.active = ? ");
+        }
+
+        sql.append(" GROUP BY p.id ");
+
+        if (sort != null) {
+            switch (sort) {
+                case "name_asc" -> sql.append(" ORDER BY p.name ASC ");
+                case "name_desc" -> sql.append(" ORDER BY p.name DESC ");
+                case "id_asc" -> sql.append(" ORDER BY p.id ASC ");
+                default -> sql.append(" ORDER BY p.id DESC ");
+            }
+        } else {
+            sql.append(" ORDER BY p.id DESC ");
+        }
+
+        sql.append(" LIMIT ? OFFSET ? ");
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            int paramIndex = 1;
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                ps.setString(paramIndex++, "%" + keyword.trim() + "%");
+            }
+            if (active != null) {
+                ps.setBoolean(paramIndex++, active);
+            }
+
+            ps.setInt(paramIndex++, limit);
+            ps.setInt(paramIndex++, offset);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Position pos = new Position();
+                    pos.setId(rs.getInt("id"));
+                    pos.setName(rs.getString("name"));
+                    pos.setDescription(rs.getString("description"));
+                    pos.setActive(rs.getBoolean("active"));
+                    pos.setCreatedAt(rs.getTimestamp("created_at") != null ? rs.getTimestamp("created_at").toLocalDateTime() : null);
+                    pos.setUpdatedAt(rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toLocalDateTime() : null);
+                    pos.setDepartmentName(rs.getString("department_name"));
+
+                    list.add(pos);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+
+    public List<Position> getAssignablePositionsByDepartment(int departmentId) {
+        List<Position> list = new ArrayList<>();
+        String sql = "SELECT p.id, p.name FROM positions p " +
+                "JOIN department_positions dp ON p.id = dp.position_id " +
+                "WHERE dp.department_id = ? " +
+                "AND p.active = true " +
+                "AND p.name NOT IN ('HR Manager', 'System Administrator', 'Department Manager') " +
+                "ORDER BY p.name";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, departmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Position pos = new Position();
+                    pos.setId(rs.getInt("id"));
+                    pos.setName(rs.getString("name"));
+                    list.add(pos);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
     public int countPositions(String keyword, Boolean active) {
         int totalRows = 0;
         StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM positions WHERE 1=1 ");
@@ -113,81 +179,172 @@ public class PositionDAO {
     }
 
     public Position findById(int id) {
-        Position positions = new Position();
-
         String sql = """
-                    SELECT p.* FROM positions p WHERE p.id = ?
-                    """;
-
+            SELECT p.*, dp.department_id
+            FROM positions p
+            LEFT JOIN department_positions dp ON p.id = dp.position_id
+            WHERE p.id = ?
+            """;
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
 
+            ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToPosition(rs);
+                    Position pos = new Position();
+                    pos.setId(rs.getInt("id"));
+                    pos.setName(rs.getString("name"));
+                    pos.setDescription(rs.getString("description"));
+                    pos.setActive(rs.getBoolean("active"));
+
+                    int deptId = rs.getInt("department_id");
+                    if (rs.wasNull()) {
+                        pos.setDepartmentId(-1);
+                    } else {
+                        pos.setDepartmentId(deptId);
+                    }
+                    return pos;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-
         return null;
     }
 
     public boolean addPosition(Position position) {
-        String sql = """
-                    INSERT INTO positions (
-                        name,
-                        description,
-                        active,
-                        created_at
-                    )
-                    VALUES (?, ?, ?, ?)
-                    """;
+        String sqlPosition = """
+                INSERT INTO positions (
+                    name,
+                    description,
+                    active,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?)
+                """;
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        String sqlMapping = """
+                INSERT INTO department_positions (
+                    department_id,
+                    position_id
+                )
+                VALUES (?, ?)
+                """;
 
-            ps.setString(1, position.getName());
-            ps.setString(2, position.getDescription());
-            ps.setBoolean(3, position.isActive());
-            setNullableTimestamp(ps, 4, position.getCreatedAt() != null ? position.getCreatedAt() : LocalDateTime.now());
+        Connection conn = null;
+        PreparedStatement psPos = null;
+        PreparedStatement psMap = null;
+        ResultSet rs = null;
 
-            return ps.executeUpdate() > 0;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            psPos = conn.prepareStatement(sqlPosition, java.sql.Statement.RETURN_GENERATED_KEYS);
+            psPos.setString(1, position.getName());
+            psPos.setString(2, position.getDescription());
+            psPos.setBoolean(3, position.isActive());
+            setNullableTimestamp(psPos, 4, position.getCreatedAt() != null ? position.getCreatedAt() : LocalDateTime.now());
+
+            int affectedRows = psPos.executeUpdate();
+            if (affectedRows == 0) {
+                conn.rollback();
+                return false;
+            }
+
+            rs = psPos.getGeneratedKeys();
+            int generatedPositionId = 0;
+            if (rs.next()) {
+                generatedPositionId = rs.getInt(1);
+            } else {
+                conn.rollback();
+                return false;
+            }
+
+            psMap = conn.prepareStatement(sqlMapping);
+            psMap.setInt(1, position.getDepartmentId());
+            psMap.setInt(2, generatedPositionId);
+            psMap.executeUpdate();
+
+            conn.commit();
+            return true;
 
         } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
             e.printStackTrace();
+        } finally {
+            try { if (rs != null) rs.close(); } catch (Exception e) {}
+            try { if (psPos != null) psPos.close(); } catch (Exception e) {}
+            try { if (psMap != null) psMap.close(); } catch (Exception e) {}
+            try { if (conn != null) conn.close(); } catch (Exception e) {}
         }
 
         return false;
     }
 
     public boolean updatePosition(Position position) {
+        // 1. Sửa thông tin cơ bản của Position
+        String sqlPosition = """
+                UPDATE positions
+                SET name = ?,
+                    description = ?,
+                    updated_at = ?
+                WHERE id = ?
+                """;
 
-        String sql = """
-                    UPDATE positions
-                    SET name = ?,
-                        description = ?,
-                        updated_at = ?
-                    WHERE id = ?
-                    """;
+        // 2. Xóa liên kết cũ trong bảng trung gian
+        String sqlDeleteMapping = "DELETE FROM department_positions WHERE position_id = ?";
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        // 3. Chèn liên kết mới vào bảng trung gian
+        String sqlInsertMapping = "INSERT INTO department_positions (department_id, position_id) VALUES (?, ?)";
 
-            ps.setString(1, position.getName());
-            ps.setString(2, position.getDescription());
-            setNullableTimestamp(ps, 3, position.getUpdatedAt());
-            ps.setInt(4, position.getId());
+        Connection conn = null;
+        PreparedStatement psPos = null;
+        PreparedStatement psDel = null;
+        PreparedStatement psIns = null;
 
-            return ps.executeUpdate() > 0;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            psPos = conn.prepareStatement(sqlPosition);
+            psPos.setString(1, position.getName());
+            psPos.setString(2, position.getDescription());
+            setNullableTimestamp(psPos, 3, position.getUpdatedAt());
+            psPos.setInt(4, position.getId());
+            psPos.executeUpdate();
+
+            psDel = conn.prepareStatement(sqlDeleteMapping);
+            psDel.setInt(1, position.getId());
+            psDel.executeUpdate();
+
+            psIns = conn.prepareStatement(sqlInsertMapping);
+            psIns.setInt(1, position.getDepartmentId());
+            psIns.setInt(2, position.getId());
+            psIns.executeUpdate();
+
+            conn.commit();
+            return true;
+
         } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
             e.printStackTrace();
+        } finally {
+            try { if (psPos != null) psPos.close(); } catch (Exception e) {}
+            try { if (psDel != null) psDel.close(); } catch (Exception e) {}
+            try { if (psIns != null) psIns.close(); } catch (Exception e) {}
+            try { if (conn != null) conn.close(); } catch (Exception e) {}
         }
         return false;
     }
 
+    public List<Position> findAllPositions() {
+        return getAllPositions(); // tận dụng phương thức đã có
+    }
     public boolean updatePositionStatus(int postId, boolean status) {
         String sql = """
                     UPDATE positions
