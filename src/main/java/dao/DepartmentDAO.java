@@ -244,7 +244,7 @@ public class DepartmentDAO {
         return list;
     }
 
-    // Kiểm tra Dept có đang active ko
+
     public boolean isDepartmentActive(int deptId) {
         String sql = "SELECT active FROM departments WHERE id = ?";
         try (Connection conn = DBConnection.getConnection();

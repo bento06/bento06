@@ -1068,7 +1068,44 @@ public class UserDAO {
             return false;
         }
     }
-
+    public int countUsersByDepartment(int departmentId) {
+        String sql = "SELECT COUNT(*) FROM users WHERE department_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, departmentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+    public void clearDepartmentAndPosition(int userId) {
+        String sql = "UPDATE users SET department_id = NULL, position_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+    public int countUsersByRole(int roleId) {
+        String sql = "SELECT COUNT(*) FROM users WHERE role_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, roleId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 
     public boolean removeDepartmentFromUsers(int departmentId) {
         String sql = "UPDATE users SET department_id = NULL WHERE department_id = ?";
