@@ -5,10 +5,12 @@ import util.DBConnection;
 import util.PasswordUtil;
 
 import java.sql.*;
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 public class UserDAO {
 
@@ -221,20 +223,66 @@ public class UserDAO {
         return false;
     }
     public List<User> searchEmployeesByKeyword(List<User> employees, String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
+        boolean accentSensitive = containsVietnameseDiacritics(keyword);
+        String normalizedKeyword = normalizeSearchText(keyword, accentSensitive);
+        if (normalizedKeyword.isEmpty()) {
             return employees;
         }
 
-        String lowerKeyword = keyword.trim().toLowerCase();
+        String[] searchTerms = normalizedKeyword.split(" ");
         List<User> result = new ArrayList<>();
         for (User user : employees) {
-            String fullName = user.getFullName() == null ? "" : user.getFullName().toLowerCase();
-            String email = user.getEmail() == null ? "" : user.getEmail().toLowerCase();
-            if (fullName.contains(lowerKeyword) || email.contains(lowerKeyword)) {
+            String searchableText = normalizeSearchText(String.join(" ",
+                    valueOrEmpty(user.getFullName()),
+                    valueOrEmpty(user.getEmail()),
+                    valueOrEmpty(user.getPhone()),
+                    valueOrEmpty(user.getPositionName())
+            ), accentSensitive);
+
+            boolean matchesAllTerms = true;
+            for (String term : searchTerms) {
+                if (!searchableText.contains(term)) {
+                    matchesAllTerms = false;
+                    break;
+                }
+            }
+            if (matchesAllTerms) {
                 result.add(user);
             }
         }
         return result;
+    }
+
+    private String normalizeSearchText(String value, boolean preserveDiacritics) {
+        if (value == null || value.trim().isEmpty()) {
+            return "";
+        }
+
+        String normalized = value;
+        if (!preserveDiacritics) {
+            normalized = Normalizer.normalize(normalized, Normalizer.Form.NFD)
+                    .replaceAll("\\p{M}+", "")
+                    .replace('đ', 'd')
+                    .replace('Đ', 'D');
+        }
+        normalized = normalized.toLowerCase(Locale.ROOT);
+        return normalized.trim().replaceAll("\\s+", " ");
+    }
+
+    private boolean containsVietnameseDiacritics(String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+
+        String withoutDiacritics = Normalizer.normalize(value, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd')
+                .replace('Đ', 'D');
+        return !value.equals(withoutDiacritics);
+    }
+
+    private String valueOrEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     public List<User> filterEmployeesByStatus(List<User> employees, String status) {
@@ -1262,6 +1310,8 @@ public class UserDAO {
 
     public List<User> getUsersWithPaging(String keyword, Boolean active, String sortBy, String sortOrder, int offset, int limit) {
         List<User> list = new ArrayList<>();
+
+        // 1. SQL lấy dữ liệu
         StringBuilder sql = new StringBuilder(
                 "SELECT u.*, r.name AS role_name, d.name AS department_name, p.name AS position_name " +
                         "FROM users u " +
@@ -1273,37 +1323,59 @@ public class UserDAO {
         if (keyword != null && !keyword.trim().isEmpty()) {
             sql.append(" AND u.full_name LIKE ?");
         }
-        if (active != null) {
-            sql.append(" AND u.active = ?");
-        }
+        if (active != null) sql.append(" AND u.active = ?");
 
+        // Sort theo tên (từ cuối cùng)
         if ("name".equals(sortBy)) {
-            sql.append(" ORDER BY u.full_name ").append("asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC");
+            sql.append(" ORDER BY SUBSTRING_INDEX(TRIM(u.full_name), ' ', -1) ").append("asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC");
         } else {
             sql.append(" ORDER BY u.id ASC");
         }
-
         sql.append(" LIMIT ? OFFSET ?");
 
+        // 2. Thực thi truy vấn
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
             int idx = 1;
             if (keyword != null && !keyword.trim().isEmpty()) ps.setString(idx++, "%" + keyword.trim() + "%");
             if (active != null) ps.setBoolean(idx++, active);
-
             ps.setInt(idx++, limit);
             ps.setInt(idx++, offset);
 
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    list.add(mapResultSetToUser(rs));
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+                while (rs.next()) list.add(mapResultSetToUser(rs));
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+        }
+
+        // 3. Bộ lọc tinh
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String k = keyword.trim().toLowerCase();
+
+            // Bảng quy đổi dấu
+            String[][] map = {{"á", "a"}, {"à", "a"}, {"ả", "a"}, {"ã", "a"}, {"ạ", "a"}, {"ă", "a"}, {"ắ", "a"}, {"ằ", "a"}, {"ẳ", "a"}, {"ẵ", "a"}, {"ặ", "a"}, {"â", "a"}, {"ấ", "a"}, {"ầ", "a"}, {"ẩ", "a"}, {"ẫ", "a"}, {"ậ", "a"},
+                    {"é", "e"}, {"è", "e"}, {"ẻ", "e"}, {"ẽ", "e"}, {"ẹ", "e"}, {"ê", "e"}, {"ế", "e"}, {"ề", "e"}, {"ể", "e"}, {"ễ", "e"}, {"ệ", "e"},
+                    {"í", "i"}, {"ì", "i"}, {"ỉ", "i"}, {"ĩ", "i"}, {"ị", "i"},
+                    {"ó", "o"}, {"ò", "o"}, {"ỏ", "o"}, {"õ", "o"}, {"ọ", "o"}, {"ô", "o"}, {"ố", "o"}, {"ồ", "o"}, {"ổ", "o"}, {"ỗ", "o"}, {"ộ", "o"}, {"ơ", "o"}, {"ớ", "o"}, {"ờ", "o"}, {"ở", "o"}, {"ỡ", "o"}, {"ợ", "o"},
+                    {"ú", "u"}, {"ù", "u"}, {"ủ", "u"}, {"ũ", "u"}, {"ụ", "u"}, {"ư", "u"}, {"ứ", "u"}, {"ừ", "u"}, {"ử", "u"}, {"ữ", "u"}, {"ự", "u"},
+                    {"ý", "y"}, {"ỳ", "y"}, {"ỷ", "y"}, {"ỹ", "y"}, {"ỵ", "y"}, {"đ", "d"}};
+
+            list = list.stream().filter(u -> {
+                String fullName = u.getFullName().toLowerCase();
+
+                // Nếu keyword có dấu, so sánh chính xác để phân biệt (vd: 'u'/'ư', 'o'/'ơ')
+                if (k.matches(".*[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ].*")) {
+                    return fullName.contains(k);
+                }
+
+                // Nếu keyword không dấu, quy đổi tên trong DB về không dấu để so sánh
+                String nameNormalized = fullName;
+                for (String[] pair : map) nameNormalized = nameNormalized.replace(pair[0], pair[1]);
+                return nameNormalized.contains(k);
+
+            }).collect(java.util.stream.Collectors.toList());
         }
         return list;
     }

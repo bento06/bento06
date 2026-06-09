@@ -46,17 +46,21 @@
             <div class="employee-list-toolbar">
                 <form action="${pageContext.request.contextPath}/admin/departments/employees" method="get" class="employee-search-form">
                     <input type="hidden" name="id" value="${id}">
-                    <input type="hidden" name="page" value="${currentPage}">
+                    <input type="hidden" name="page" value="1">
 
-                    <input type="text" name="keyword" placeholder="Search by name or email..." value="${keyword}">
+                    <input type="search"
+                           name="keyword"
+                           aria-label="Search employees"
+                           placeholder="Search by name, email, phone or position..."
+                           value="<c:out value='${keyword}'/>">
 
-                    <select name="status">
+                    <select name="status" aria-label="Filter by status" onchange="this.form.submit()">
                         <option value="all" ${status == 'all' ? 'selected' : ''}>All Status</option>
                         <option value="active" ${status == 'active' ? 'selected' : ''}>Active</option>
                         <option value="inactive" ${status == 'inactive' ? 'selected' : ''}>Inactive</option>
                     </select>
 
-                    <select name="sort" onchange="this.form.submit()">
+                    <select name="sort" aria-label="Sort by name" onchange="this.form.submit()">
                         <option value="name_asc" ${sort == 'name_asc' ? 'selected' : ''}>Name A-Z</option>
                         <option value="name_desc" ${sort == 'name_desc' ? 'selected' : ''}>Name Z-A</option>
                     </select>
@@ -69,6 +73,12 @@
                     <a href="${pageContext.request.contextPath}/add_member?deptId=${id}" class="employee-add-member">Add Member</a>
                 </c:if>
             </div>
+
+            <c:if test="${not empty keyword || status != 'all'}">
+                <div class="employee-search-summary">
+                    ${totalEmployees} employee${totalEmployees == 1 ? '' : 's'} found.
+                </div>
+            </c:if>
 
             <div class="table-wrapper">
                 <table>
@@ -168,7 +178,16 @@
                     </c:forEach>
                     <c:if test="${empty employees}">
                         <tr>
-                            <td colspan="${sessionScope.roleName != 'EMPLOYEE' ? 8 : 7}" class="empty-state">No employees found in this department.</td>
+                            <td colspan="8" class="empty-state">
+                                <c:choose>
+                                    <c:when test="${not empty keyword || status != 'all'}">
+                                        No employees match the current search or filter.
+                                    </c:when>
+                                    <c:otherwise>
+                                        No employees found in this department.
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
                         </tr>
                     </c:if>
                     </tbody>
