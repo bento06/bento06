@@ -148,10 +148,15 @@ public class UserDAO {
     }
 
     public List<User> getEmployeesByDepartment(int departmentId, String keyword, String status, String sort, int page, int pageSize) {
+        return getEmployeesByDepartment(departmentId, keyword, status, sort, page, pageSize, null);
+    }
+
+    public List<User> getEmployeesByDepartment(int departmentId, String keyword, String status, String sort,
+                                               int page, int pageSize, Integer managerUserId) {
         List<User> employees = getAllEmployeesByDepartment(departmentId);
         employees = searchEmployeesByKeyword(employees, keyword);
         employees = filterEmployeesByStatus(employees, status);
-        employees = sortEmployeesByName(employees, sort);
+        employees = sortEmployeesByName(employees, sort, managerUserId);
         return pagingEmployees(employees, page, pageSize);
     }
 
@@ -224,16 +229,50 @@ public class UserDAO {
     }
 
     public List<User> sortEmployeesByName(List<User> employees, String sort) {
+        return sortEmployeesByName(employees, sort, null);
+    }
+
+    public List<User> sortEmployeesByName(List<User> employees, String sort, Integer managerUserId) {
         List<User> result = new ArrayList<>(employees);
-        Comparator<User> comparator = Comparator.comparing(
-                user -> user.getFullName() == null ? "" : user.getFullName(),
-                String.CASE_INSENSITIVE_ORDER
-        );
+        Comparator<User> nameComparator = (first, second) ->
+                compareNamesFromLastWord(first.getFullName(), second.getFullName());
         if ("name_desc".equals(sort)) {
-            comparator = comparator.reversed();
+            nameComparator = nameComparator.reversed();
         }
+
+        Comparator<User> comparator = Comparator
+                .comparing((User user) -> managerUserId == null || user.getId() != managerUserId)
+                .thenComparing(nameComparator);
         result.sort(comparator);
         return result;
+    }
+
+    private int compareNamesFromLastWord(String firstName, String secondName) {
+        String[] firstWords = splitName(firstName);
+        String[] secondWords = splitName(secondName);
+
+        int firstIndex = firstWords.length - 1;
+        int secondIndex = secondWords.length - 1;
+        while (firstIndex >= 0 && secondIndex >= 0) {
+            int comparison = String.CASE_INSENSITIVE_ORDER.compare(
+                    firstWords[firstIndex],
+                    secondWords[secondIndex]
+            );
+            if (comparison != 0) {
+                return comparison;
+            }
+            firstIndex--;
+            secondIndex--;
+        }
+
+        return Integer.compare(firstWords.length, secondWords.length);
+    }
+
+    private String[] splitName(String fullName) {
+        if (fullName == null || fullName.trim().isEmpty()) {
+            return new String[0];
+        }
+        return fullName.trim().split("\\s+");
     }
 
     public List<User> pagingEmployees(List<User> employees, int page, int pageSize) {
@@ -1198,6 +1237,8 @@ public class UserDAO {
 
     public List<User> getUsersWithPaging(String keyword, Boolean active, String sortBy, String sortOrder, int offset, int limit) {
         List<User> list = new ArrayList<>();
+
+        // 1. SQL lấy dữ liệu
         StringBuilder sql = new StringBuilder(
                 "SELECT u.*, r.name AS role_name, d.name AS department_name, p.name AS position_name " +
                         "FROM users u " +
@@ -1209,37 +1250,59 @@ public class UserDAO {
         if (keyword != null && !keyword.trim().isEmpty()) {
             sql.append(" AND u.full_name LIKE ?");
         }
-        if (active != null) {
-            sql.append(" AND u.active = ?");
-        }
+        if (active != null) sql.append(" AND u.active = ?");
 
+        // Sort theo tên (từ cuối cùng)
         if ("name".equals(sortBy)) {
-            sql.append(" ORDER BY u.full_name ").append("asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC");
+            sql.append(" ORDER BY SUBSTRING_INDEX(TRIM(u.full_name), ' ', -1) ").append("asc".equalsIgnoreCase(sortOrder) ? "ASC" : "DESC");
         } else {
             sql.append(" ORDER BY u.id ASC");
         }
-
         sql.append(" LIMIT ? OFFSET ?");
 
+        // 2. Thực thi truy vấn
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql.toString())) {
 
             int idx = 1;
             if (keyword != null && !keyword.trim().isEmpty()) ps.setString(idx++, "%" + keyword.trim() + "%");
             if (active != null) ps.setBoolean(idx++, active);
-
             ps.setInt(idx++, limit);
             ps.setInt(idx++, offset);
 
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    list.add(mapResultSetToUser(rs));
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+                while (rs.next()) list.add(mapResultSetToUser(rs));
             }
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+        }
+
+        // 3. Bộ lọc tinh
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String k = keyword.trim().toLowerCase();
+
+            // Bảng quy đổi dấu
+            String[][] map = {{"á", "a"}, {"à", "a"}, {"ả", "a"}, {"ã", "a"}, {"ạ", "a"}, {"ă", "a"}, {"ắ", "a"}, {"ằ", "a"}, {"ẳ", "a"}, {"ẵ", "a"}, {"ặ", "a"}, {"â", "a"}, {"ấ", "a"}, {"ầ", "a"}, {"ẩ", "a"}, {"ẫ", "a"}, {"ậ", "a"},
+                    {"é", "e"}, {"è", "e"}, {"ẻ", "e"}, {"ẽ", "e"}, {"ẹ", "e"}, {"ê", "e"}, {"ế", "e"}, {"ề", "e"}, {"ể", "e"}, {"ễ", "e"}, {"ệ", "e"},
+                    {"í", "i"}, {"ì", "i"}, {"ỉ", "i"}, {"ĩ", "i"}, {"ị", "i"},
+                    {"ó", "o"}, {"ò", "o"}, {"ỏ", "o"}, {"õ", "o"}, {"ọ", "o"}, {"ô", "o"}, {"ố", "o"}, {"ồ", "o"}, {"ổ", "o"}, {"ỗ", "o"}, {"ộ", "o"}, {"ơ", "o"}, {"ớ", "o"}, {"ờ", "o"}, {"ở", "o"}, {"ỡ", "o"}, {"ợ", "o"},
+                    {"ú", "u"}, {"ù", "u"}, {"ủ", "u"}, {"ũ", "u"}, {"ụ", "u"}, {"ư", "u"}, {"ứ", "u"}, {"ừ", "u"}, {"ử", "u"}, {"ữ", "u"}, {"ự", "u"},
+                    {"ý", "y"}, {"ỳ", "y"}, {"ỷ", "y"}, {"ỹ", "y"}, {"ỵ", "y"}, {"đ", "d"}};
+
+            list = list.stream().filter(u -> {
+                String fullName = u.getFullName().toLowerCase();
+
+                // Nếu keyword có dấu, so sánh chính xác để phân biệt (vd: 'u'/'ư', 'o'/'ơ')
+                if (k.matches(".*[áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ].*")) {
+                    return fullName.contains(k);
+                }
+
+                // Nếu keyword không dấu, quy đổi tên trong DB về không dấu để so sánh
+                String nameNormalized = fullName;
+                for (String[] pair : map) nameNormalized = nameNormalized.replace(pair[0], pair[1]);
+                return nameNormalized.contains(k);
+
+            }).collect(java.util.stream.Collectors.toList());
         }
         return list;
     }
