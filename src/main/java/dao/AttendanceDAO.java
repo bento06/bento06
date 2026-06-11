@@ -181,6 +181,79 @@ public class AttendanceDAO {
         return null;
     }
 
+    public AttendanceRecordDTO getAttendanceRecordDetailById(int id) {
+        String sql =
+                "SELECT ar.id AS attendance_record_id, ar.user_id, u.employee_code, " +
+                "u.full_name AS employee_name, d.name AS department_name, ar.work_date, " +
+                "ar.check_in, ar.check_out, ar.total_work_hours, ar.overtime_hours, " +
+                "ar.late_hours, ar.early_leave_hours, ar.status, ar.note " +
+                "FROM attendance_records ar " +
+                "JOIN users u ON u.id = ar.user_id " +
+                "LEFT JOIN departments d ON d.id = u.department_id " +
+                "WHERE ar.id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    AttendanceRecordDTO dto = new AttendanceRecordDTO();
+                    LocalDateTime checkIn = getNullableLocalDateTime(rs, "check_in");
+                    LocalDateTime checkOut = getNullableLocalDateTime(rs, "check_out");
+
+                    dto.setAttendanceRecordId(rs.getInt("attendance_record_id"));
+                    dto.setUserId(rs.getInt("user_id"));
+                    dto.setEmployeeCode(rs.getString("employee_code"));
+                    dto.setEmployeeName(rs.getString("employee_name"));
+                    dto.setDepartmentName(rs.getString("department_name"));
+                    dto.setWorkDate(rs.getDate("work_date").toLocalDate());
+                    dto.setCheckIn(checkIn);
+                    dto.setCheckOut(checkOut);
+                    dto.setCheckInText(
+                            checkIn == null ? "" : checkIn.format(MATRIX_TIME_FORMAT)
+                    );
+                    dto.setCheckOutText(
+                            checkOut == null ? "" : checkOut.format(MATRIX_TIME_FORMAT)
+                    );
+                    dto.setTotalWorkHours(getNullableDouble(rs, "total_work_hours"));
+                    dto.setOvertimeHours(getNullableDouble(rs, "overtime_hours"));
+                    dto.setLateHours(getNullableDouble(rs, "late_hours"));
+                    dto.setEarlyLeaveHours(getNullableDouble(rs, "early_leave_hours"));
+                    dto.setStatus(rs.getString("status"));
+                    dto.setNote(rs.getString("note"));
+                    return dto;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean updateAttendanceRecord(AttendanceRecord record) {
+        String sql =
+                "UPDATE attendance_records SET " +
+                "check_in = ?, check_out = ?, total_work_hours = ?, " +
+                "late_hours = ?, early_leave_hours = ?, status = ?, note = ?, " +
+                "updated_at = NOW() WHERE id = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            setNullableTimestamp(ps, 1, record.getCheckIn());
+            setNullableTimestamp(ps, 2, record.getCheckOut());
+            ps.setDouble(3, record.getTotalWorkHours());
+            ps.setDouble(4, record.getLateHours());
+            ps.setDouble(5, record.getEarlyLeaveHours());
+            ps.setString(6, record.getStatus());
+            ps.setString(7, record.getNote());
+            ps.setInt(8, record.getId());
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public List<AttendanceRecord> getRecordsByUser(int userId, LocalDate start, LocalDate end) {
         List<AttendanceRecord> list = new ArrayList<>();
         String sql = "SELECT * FROM attendance_records WHERE user_id = ? AND work_date BETWEEN ? AND ? ORDER BY work_date";
@@ -544,11 +617,11 @@ public class AttendanceDAO {
     }
 
     private String resolveMatrixCssClass(String status, double overtimeHours, boolean edited) {
-        if (overtimeHours > 0) {
-            return "status-ot";
-        }
         if (edited) {
             return "status-edited";
+        }
+        if (overtimeHours > 0) {
+            return "status-ot";
         }
         if (status == null) {
             return "";

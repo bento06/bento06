@@ -32,6 +32,24 @@
                     </div>
                 </div>
 
+                <c:if test="${param.message == 'updated'}">
+                    <div class="attendance-matrix-message success" role="status">
+                        Attendance record updated successfully.
+                    </div>
+                </c:if>
+                <c:if test="${not empty param.error}">
+                    <div class="attendance-matrix-message error" role="alert">
+                        <c:choose>
+                            <c:when test="${param.error == 'record_not_found'}">
+                                Attendance record was not found.
+                            </c:when>
+                            <c:otherwise>
+                                Invalid attendance record.
+                            </c:otherwise>
+                        </c:choose>
+                    </div>
+                </c:if>
+
                 <form class="attendance-matrix-filters"
                       action="${pageContext.request.contextPath}/attendance/records"
                       method="get">
@@ -167,6 +185,9 @@
                                                             </span>
                                                             <c:if test="${record.overtimeHours > 0}">
                                                                 <span class="matrix-ot-badge">OT</span>
+                                                            </c:if>
+                                                            <c:if test="${record.cssClass == 'status-edited'}">
+                                                                <span class="matrix-edited-badge">Edited</span>
                                                             </c:if>
                                                         </a>
                                                     </td>

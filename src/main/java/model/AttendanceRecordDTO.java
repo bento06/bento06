@@ -30,6 +30,14 @@ public class AttendanceRecordDTO {
         this.attendanceRecordId = attendanceRecordId;
     }
 
+    public int getId() {
+        return attendanceRecordId;
+    }
+
+    public void setId(int id) {
+        this.attendanceRecordId = id;
+    }
+
     public int getUserId() {
         return userId;
     }
