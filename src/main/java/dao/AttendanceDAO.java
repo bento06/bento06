@@ -504,7 +504,9 @@ public class AttendanceDAO {
         if (earlyMinutes < 0) earlyMinutes = 0; // về muộn không tính sớm
 
         // Lưu số giờ thực tế đi muộn / về sớm (để báo cáo)
-        record.setLateHours(roundToTwoDecimals(lateMinutes / 60.0));
+        // Up to 5 minutes late is within the grace period and remains ON_TIME.
+        long countedLateMinutes = lateMinutes > LATE_GRACE_MINUTES ? lateMinutes : 0;
+        record.setLateHours(roundToTwoDecimals(countedLateMinutes / 60.0));
         record.setEarlyLeaveHours(roundToTwoDecimals(earlyMinutes / 60.0));
 
         // Tính phạt:
@@ -523,8 +525,9 @@ public class AttendanceDAO {
         if (lateMinutes <= LATE_GRACE_MINUTES) {
             return 0.0;
         }
-        long punishable = lateMinutes - LATE_GRACE_MINUTES;
-        long blocks = (punishable + PENALTY_BLOCK_MINUTES - 1) / PENALTY_BLOCK_MINUTES; // ceil
+
+        // Grace only waives 08:01-08:05; block boundaries still start from 08:00.
+        long blocks = (lateMinutes + PENALTY_BLOCK_MINUTES - 1) / PENALTY_BLOCK_MINUTES;
         return blocks * 0.5;
     }
 
@@ -619,11 +622,8 @@ public class AttendanceDAO {
         dto.setNote(rs.getString("note"));
         dto.setCheckInText(checkIn == null ? "--" : checkIn.format(MATRIX_TIME_FORMAT));
         dto.setCheckOutText(checkOut == null ? "--" : checkOut.format(MATRIX_TIME_FORMAT));
-        dto.setCssClass(resolveMatrixCssClass(
-                status,
-                overtimeHours,
-                rs.getTimestamp("updated_at") != null
-        ));
+        dto.setEdited(rs.getTimestamp("updated_at") != null);
+        dto.setCssClass(resolveMatrixCssClass(status));
         return dto;
     }
 
@@ -632,13 +632,7 @@ public class AttendanceDAO {
         return value == null ? null : rs.getDouble(column);
     }
 
-    private String resolveMatrixCssClass(String status, double overtimeHours, boolean edited) {
-        if (edited) {
-            return "status-edited";
-        }
-        if (overtimeHours > 0) {
-            return "status-ot";
-        }
+    private String resolveMatrixCssClass(String status) {
         if (status == null) {
             return "";
         }
@@ -646,7 +640,8 @@ public class AttendanceDAO {
             case "ON_TIME" -> "status-on-time";
             case "LATE", "EARLY_LEAVE", "LATE_AND_EARLY", "LATE_AND_EARLY_LEAVE" -> "status-late";
             case "ON_LEAVE" -> "status-leave";
-            case "ABSENT", "FORGOT_CHECKIN", "FORGOT_CHECKOUT",
+            case "ABSENT" -> "status-absent";
+            case "FORGOT_CHECKIN", "FORGOT_CHECKOUT",
                  "FORGOT_CHECK_IN", "FORGOT_CHECK_OUT" -> "status-forgot";
             default -> "";
         };
