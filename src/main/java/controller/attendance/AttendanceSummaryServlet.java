@@ -7,6 +7,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import model.AttendanceSummary;
 import model.User;
 
@@ -16,6 +17,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @WebServlet("/attendance/summary")
 public class AttendanceSummaryServlet extends HttpServlet {
@@ -26,13 +28,32 @@ public class AttendanceSummaryServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        Integer userId = parsePositiveInteger(request.getParameter("userId"));
-        if (userId == null) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing employee ID");
+        HttpSession session = request.getSession(false);
+        User currentUser = session != null ? (User) session.getAttribute("currentUser") : null;
+        if (currentUser == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
-        User employee = userDAO.findById(userId);
+        String userIdParameter = request.getParameter("userId");
+        Integer requestedUserId = null;
+        if (userIdParameter != null && !userIdParameter.isBlank()) {
+            requestedUserId = parsePositiveInteger(userIdParameter);
+            if (requestedUserId == null) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid employee ID");
+                return;
+            }
+        }
+
+        int targetUserId = requestedUserId != null ? requestedUserId : currentUser.getId();
+        if (!canViewSummary(session, currentUser.getId(), targetUserId)) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            return;
+        }
+
+        User employee = targetUserId == currentUser.getId()
+                ? currentUser
+                : userDAO.findById(targetUserId);
         if (employee == null) {
             response.sendError(HttpServletResponse.SC_NOT_FOUND, "Employee not found");
             return;
@@ -53,11 +74,25 @@ public class AttendanceSummaryServlet extends HttpServlet {
         request.setAttribute("summary", summary);
         request.setAttribute("displayUser", employee);
         request.setAttribute("summaryAction", request.getContextPath() + "/attendance/summary");
-        request.setAttribute("summaryUserId", employee.getId());
+        if (requestedUserId != null) {
+            request.setAttribute("summaryUserId", employee.getId());
+        }
         request.setAttribute("selectedYear", selectedYear);
         request.setAttribute("selectedMonth", selectedMonth);
         request.setAttribute("years", buildYearOptions(today.getYear(), selectedYear));
         request.getRequestDispatcher("/WEB-INF/views/attendance/summary.jsp").forward(request, response);
+    }
+
+    private boolean canViewSummary(HttpSession session, int currentUserId, int targetUserId) {
+        @SuppressWarnings("unchecked")
+        Set<String> permissions = (Set<String>) session.getAttribute("userPermissions");
+        if (permissions == null) {
+            return false;
+        }
+        if (targetUserId == currentUserId) {
+            return permissions.contains("ATTENDANCE_VIEW_OWN");
+        }
+        return permissions.contains("ATTENDANCE_VIEW_ALL");
     }
 
     private int countWeekdays(YearMonth period) {
