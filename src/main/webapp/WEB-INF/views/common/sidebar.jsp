@@ -213,16 +213,17 @@
             </button>
             <div class="submenu">
                 <c:if test="${userPermissions.contains('ATTENDANCE_VIEW_OWN')}">
-                    <a href="${ctx}/attendance/my" class="submenu-item ${currentPath == ctx.concat('/attendance/my') ? 'active' : ''}">My Attendance</a>
+                    <a href="${ctx}/attendance/summary?userId=${currentUser.id}" class="submenu-item ${currentPath == ctx.concat('/attendance/summary') && param.userId == currentUser.id ? 'active' : ''}">My Attendance</a>
                 </c:if>
                 <c:if test="${userPermissions.contains('ATTENDANCE_VIEW_DEPARTMENT')}">
                     <a href="${ctx}/attendance/department" class="submenu-item ${currentPath == ctx.concat('/attendance/department') ? 'active' : ''}">Department Attendance</a>
                 </c:if>
                 <c:if test="${userPermissions.contains('ATTENDANCE_VIEW_ALL')}">
-                    <a href="${ctx}/attendance/all" class="submenu-item ${currentPath == ctx.concat('/attendance/all') ? 'active' : ''}">All Attendance</a>
+                    <a href="${ctx}/attendance/records" class="submenu-item ${currentPath == ctx.concat('/attendance/records') ? 'active' : ''}">Attendance Records</a>
                 </c:if>
                 <c:if test="${userPermissions.contains('ATTENDANCE_UPDATE')}">
                     <a href="${ctx}/attendance/update" class="submenu-item ${currentPath == ctx.concat('/attendance/update') ? 'active' : ''}">Update Attendance</a>
+                    <a href="${ctx}/admin/attendance/import" class="submenu-item ${currentPath == ctx.concat('/admin/attendance/import') ? 'active' : ''}">Import Attendance</a>
                 </c:if>
                 <c:if test="${userPermissions.contains('ATTENDANCE_EXPORT_REPORT')}">
                     <a href="${ctx}/attendance/export" class="submenu-item ${currentPath == ctx.concat('/attendance/export') ? 'active' : ''}">Export Report</a>
