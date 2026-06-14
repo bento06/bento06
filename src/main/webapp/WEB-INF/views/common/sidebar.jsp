@@ -118,7 +118,31 @@
             </div>
         </div>
         </c:if>
-
+        <!-- Organization Group -->
+        <c:if test="${userPermissions.contains('DEPARTMENT_VIEW_LIST')}">
+        <c:set var="orgActive" value="${currentPath.startsWith(ctx.concat('/admin/company-structure'))}" />
+        <div class="nav-group">
+            <button class="nav-item nav-toggle ${orgActive ? 'open' : ''}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="5" rx="1"></rect>
+                    <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+                    <rect x="8" y="14" width="8" height="5" rx="1"></rect>
+                    <line x1="8" y1="8" x2="12" y2="14"></line>
+                    <line x1="16" y1="8" x2="12" y2="14"></line>
+                </svg>
+                <span>Organization</span>
+                <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
+            <div class="submenu">
+                <a href="${ctx}/admin/company-structure"
+                   class="submenu-item ${currentPath == ctx.concat('/admin/company-structure') ? 'active' : ''}">
+                   View Company Organization
+                </a>
+            </div>
+        </div>
+        </c:if>
         <!-- Positions Group -->
         <c:if test="${showPositions}">
         <c:set var="posActive" value="${currentPath.startsWith(ctx.concat('/position'))}" />
