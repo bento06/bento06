@@ -7,7 +7,10 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import model.AttendanceRecordDTO;
+import model.Department;
+import model.User;
 
 import java.io.IOException;
 import java.time.DayOfWeek;
@@ -19,9 +22,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@WebServlet("/attendance/records")
-public class AttendanceRecordServlet extends HttpServlet {
+@WebServlet("/attendance/department")
+public class DepartmentAttendanceServlet extends HttpServlet {
     private static final int PAGE_SIZE = 5;
+    // private static final int MATRIX_DAY_COUNT = 7; // không còn dùng nữa
     private static final DateTimeFormatter DAY_FORMAT = DateTimeFormatter.ofPattern("dd/MM");
 
     private final AttendanceDAO attendanceDAO = new AttendanceDAO();
@@ -30,6 +34,35 @@ public class AttendanceRecordServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
+        User currentUser = session != null ? (User) session.getAttribute("currentUser") : null;
+        if (currentUser == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+
+        Integer departmentId = currentUser.getDepartmentId();
+        if (departmentId == null) {
+            request.setAttribute("records", List.of());
+            request.setAttribute("employees", List.of());
+            request.setAttribute("daysInMonth", List.of());
+            request.setAttribute("dayLabels", List.of());
+            request.setAttribute("attendanceMap", Map.of());
+            request.setAttribute("years", buildYearOptions(LocalDate.now().getYear(), LocalDate.now().getYear()));
+            request.setAttribute("selectedMonth", LocalDate.now().getMonthValue());
+            request.setAttribute("selectedYear", LocalDate.now().getYear());
+            request.setAttribute("keyword", "");
+            request.setAttribute("currentPage", 1);
+            request.setAttribute("totalPages", 0);
+            request.setAttribute("totalEmployees", 0);
+            request.setAttribute("departmentName", "No department assigned");
+            request.setAttribute("noDepartmentAssigned", true);
+            request.getRequestDispatcher("/WEB-INF/views/attendance/department_attendance.jsp")
+                    .forward(request, response);
+            return;
+        }
+
+        Department department = departmentDAO.getDepartmentById(departmentId);
         LocalDate today = LocalDate.now();
         int selectedMonth = parseIntInRange(
                 request.getParameter("month"),
@@ -43,14 +76,13 @@ public class AttendanceRecordServlet extends HttpServlet {
                 2000,
                 2100
         );
-        Integer selectedDepartmentId = parsePositiveInteger(request.getParameter("departmentId"));
         String keyword = normalizeKeyword(request.getParameter("keyword"));
         int currentPage = Math.max(1, parseInt(request.getParameter("page"), 1));
 
         int totalEmployees = attendanceDAO.countEmployeesForAttendanceMatrix(
                 selectedMonth,
                 selectedYear,
-                selectedDepartmentId,
+                departmentId,
                 keyword
         );
         int totalPages = (int) Math.ceil((double) totalEmployees / PAGE_SIZE);
@@ -61,7 +93,7 @@ public class AttendanceRecordServlet extends HttpServlet {
         List<AttendanceRecordDTO> records = attendanceDAO.getAttendanceRecordsForMatrix(
                 selectedMonth,
                 selectedYear,
-                selectedDepartmentId,
+                departmentId,
                 keyword,
                 currentPage,
                 PAGE_SIZE
@@ -77,7 +109,7 @@ public class AttendanceRecordServlet extends HttpServlet {
         YearMonth selectedPeriod = YearMonth.of(selectedYear, selectedMonth);
         List<LocalDate> daysInMonth = new ArrayList<>();
         List<String> dayLabels = new ArrayList<>();
-        // Hiển thị tất cả các ngày trong tháng
+        // Hiển thị toàn bộ các ngày trong tháng (không giới hạn 7 ngày)
         for (int day = 1; day <= selectedPeriod.lengthOfMonth(); day++) {
             LocalDate date = selectedPeriod.atDay(day);
             daysInMonth.add(date);
@@ -89,16 +121,15 @@ public class AttendanceRecordServlet extends HttpServlet {
         request.setAttribute("daysInMonth", daysInMonth);
         request.setAttribute("dayLabels", dayLabels);
         request.setAttribute("attendanceMap", attendanceMap);
-        request.setAttribute("departments", departmentDAO.getAllDepartments());
         request.setAttribute("years", buildYearOptions(today.getYear(), selectedYear));
         request.setAttribute("selectedMonth", selectedMonth);
         request.setAttribute("selectedYear", selectedYear);
-        request.setAttribute("selectedDepartmentId", selectedDepartmentId);
         request.setAttribute("keyword", keyword);
         request.setAttribute("currentPage", currentPage);
         request.setAttribute("totalPages", totalPages);
         request.setAttribute("totalEmployees", totalEmployees);
-        request.getRequestDispatcher("/WEB-INF/views/attendance/attendance_records.jsp")
+        request.setAttribute("departmentName", department != null ? department.getName() : "My department");
+        request.getRequestDispatcher("/WEB-INF/views/attendance/department_attendance.jsp")
                 .forward(request, response);
     }
 
@@ -106,6 +137,7 @@ public class AttendanceRecordServlet extends HttpServlet {
         return userId + "_" + workDate;
     }
 
+    // Đã đổi sang tiếng Anh
     private String formatDayLabel(LocalDate date) {
         return englishDayOfWeek(date.getDayOfWeek()) + " - " + date.format(DAY_FORMAT);
     }
@@ -137,15 +169,6 @@ public class AttendanceRecordServlet extends HttpServlet {
             return "";
         }
         return keyword.trim().replaceAll("\\s+", " ");
-    }
-
-    private Integer parsePositiveInteger(String value) {
-        try {
-            int parsed = Integer.parseInt(value);
-            return parsed > 0 ? parsed : null;
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     private int parseIntInRange(String value, int defaultValue, int min, int max) {

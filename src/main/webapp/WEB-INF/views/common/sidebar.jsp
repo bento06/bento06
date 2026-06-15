@@ -325,7 +325,7 @@
                 <c:if test="${userPermissions.contains('ATTENDANCE_VIEW_OWN')}">
                     <a href="${ctx}/attendance/my"
                        class="submenu-item ${currentPath == ctx.concat('/attendance/my') ? 'active' : ''}">
-                       My Attendance
+                       Attendance Detail
                     </a>
                 </c:if>
                 <c:if test="${userPermissions.contains('ATTENDANCE_VIEW_DEPARTMENT')}">
