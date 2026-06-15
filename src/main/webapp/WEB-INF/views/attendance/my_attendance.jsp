@@ -159,6 +159,10 @@
                             <strong><fmt:formatNumber value="${summary.leaveDaysInMonth}" maxFractionDigits="2"/></strong>
                         </div>
                         <div class="attendance-summary-row">
+                            <span>Number of absent this month</span>
+                            <strong><fmt:formatNumber value="${summary.absentDaysInMonth}" maxFractionDigits="2"/></strong>
+                        </div>
+                        <div class="attendance-summary-row">
                             <span>Number of Late Arrivals</span>
                             <strong>${summary.lateCount}</strong>
                         </div>
