@@ -28,7 +28,7 @@
                 <div class="attendance-records-heading">
                     <div>
                         <h2>Attendance records</h2>
-                        <p>Showing the first 7 days of the selected month.</p>
+                        <p>Showing all days of ${selectedMonth}/${selectedYear}.</p>
                     </div>
                 </div>
 
@@ -141,7 +141,7 @@
                         <c:choose>
                             <c:when test="${empty employees}">
                                 <tr>
-                                    <td colspan="8" class="matrix-empty-state">
+                                    <td colspan="${daysInMonth.size() + 1}" class="matrix-empty-state">
                                         No attendance records found for the selected filters.
                                     </td>
                                 </tr>
