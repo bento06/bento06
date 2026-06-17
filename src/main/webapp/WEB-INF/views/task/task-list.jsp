@@ -3,7 +3,7 @@
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Task Management | HRM</title>
@@ -26,11 +26,11 @@
     <div class="dashboard-main">
         <div class="dashboard-header">
             <div class="header-left">
-                <h1 class="header-title">Quản lý tác vụ</h1>
+                <h1 class="header-title">Task Management</h1>
             </div>
             <div class="header-right">
                 <c:if test="${sessionScope.userPermissions.contains('TASK_CREATE')}">
-                    <a href="${pageContext.request.contextPath}/tasks?action=create" class="btn-primary">Tạo tác vụ</a>
+                    <a href="${pageContext.request.contextPath}/tasks?action=create" class="btn-primary">Create Task</a>
                 </c:if>
             </div>
         </div>
@@ -48,17 +48,17 @@
             <div class="search-filter">
                 <form action="${pageContext.request.contextPath}/tasks" method="get">
                     <input type="hidden" name="action" value="list">
-                    <input type="text" name="keyword" placeholder="Tìm kiếm theo tên tác vụ" value="${keyword}">
+                    <input type="text" name="keyword" placeholder="Search by task name" value="${keyword}">
                     <select name="status">
-                        <option value="" ${empty status ? 'selected' : ''}>Tất cả trạng thái</option>
-                        <option value="TODO" ${status == 'TODO' ? 'selected' : ''}>Chờ thực hiện</option>
-                        <option value="IN_PROGRESS" ${status == 'IN_PROGRESS' ? 'selected' : ''}>Đang diễn ra</option>
-                        <option value="COMPLETED" ${status == 'COMPLETED' ? 'selected' : ''}>Hoàn thành</option>
-                        <option value="PAUSED" ${status == 'PAUSED' ? 'selected' : ''}>Tạm dừng</option>
-                        <option value="OVERDUE" ${status == 'OVERDUE' ? 'selected' : ''}>Quá hạn</option>
+                        <option value="" ${empty status ? 'selected' : ''}>All statuses</option>
+                        <option value="TODO" ${status == 'TODO' ? 'selected' : ''}>To do</option>
+                        <option value="IN_PROGRESS" ${status == 'IN_PROGRESS' ? 'selected' : ''}>In progress</option>
+                        <option value="COMPLETED" ${status == 'COMPLETED' ? 'selected' : ''}>Completed</option>
+                        <option value="PAUSED" ${status == 'PAUSED' ? 'selected' : ''}>Paused</option>
+                        <option value="OVERDUE" ${status == 'OVERDUE' ? 'selected' : ''}>Overdue</option>
                     </select>
-                    <button type="submit" class="search-btn">Tìm kiếm</button>
-                    <a href="${pageContext.request.contextPath}/tasks" class="btn-reset">Xoá lọc</a>
+                    <button type="submit" class="search-btn">Search</button>
+                    <a href="${pageContext.request.contextPath}/tasks" class="btn-reset">Clear filters</a>
                 </form>
             </div>
 
@@ -66,14 +66,14 @@
                 <table>
                     <thead>
                     <tr>
-                        <th>Tên tác vụ</th>
-                        <th>Hạn chót</th>
-                        <th>Người tạo</th>
-                        <th>Người phụ trách</th>
-                        <th>Ngày tạo</th>
-                        <th>Trạng thái</th>
-                        <th>Tiến độ</th>
-                        <th>Hành động</th>
+                        <th>Task name</th>
+                        <th>Deadline</th>
+                        <th>Created by</th>
+                        <th>Assignee</th>
+                        <th>Created at</th>
+                        <th>Status</th>
+                        <th>Progress</th>
+                        <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -96,18 +96,16 @@
                                 </div>
                             </td>
                             <td class="actions">
-                                <a href="${pageContext.request.contextPath}/tasks?action=detail&id=${task.id}">Xem chi tiết</a>
-                                <c:if test="${sessionScope.userPermissions.contains('TASK_CREATE')}">
-                                    <a href="${pageContext.request.contextPath}/tasks?action=edit&id=${task.id}">Cập nhật</a>
-                                    <a href="${pageContext.request.contextPath}/tasks?action=delete&id=${task.id}"
-                                       onclick="return confirm('Xoá tác vụ này?')">Xoá</a>
+                                <a href="${pageContext.request.contextPath}/tasks?action=detail&id=${task.id}">View detail</a>
+                                <c:if test="${sessionScope.userPermissions.contains('TASK_UPDATE')}">
+                                    <a href="${pageContext.request.contextPath}/tasks?action=edit&id=${task.id}">Update</a>
                                 </c:if>
                             </td>
                         </tr>
                     </c:forEach>
                     <c:if test="${empty tasks}">
                         <tr>
-                            <td colspan="8" class="empty-state">Không có tác vụ nào.</td>
+                            <td colspan="8" class="empty-state">No tasks found.</td>
                         </tr>
                     </c:if>
                     </tbody>
@@ -118,7 +116,7 @@
                 <c:if test="${currentPage > 1}">
                     <a href="${pageContext.request.contextPath}/tasks?page=${currentPage - 1}&keyword=${keyword}&status=${status}">Previous</a>
                 </c:if>
-                <span>Trang ${currentPage} / ${totalPages} (${totalRecords} tác vụ)</span>
+                <span>Page ${currentPage} / ${totalPages} (${totalRecords} tasks)</span>
                 <c:if test="${currentPage < totalPages}">
                     <a href="${pageContext.request.contextPath}/tasks?page=${currentPage + 1}&keyword=${keyword}&status=${status}">Next</a>
                 </c:if>

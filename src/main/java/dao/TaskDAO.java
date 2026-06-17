@@ -17,6 +17,8 @@ public class TaskDAO {
     private final TaskParticipantDAO participantDAO = new TaskParticipantDAO();
     private final TaskObserverDAO observerDAO = new TaskObserverDAO();
     private final TaskChecklistItemDAO checklistItemDAO = new TaskChecklistItemDAO();
+    private final TaskCommentDAO commentDAO = new TaskCommentDAO();
+    private final TaskHistoryDAO historyDAO = new TaskHistoryDAO();
 
     public List<Task> getTasks(String keyword, String status, int page, int pageSize) {
         List<Task> tasks = new ArrayList<>();
@@ -135,6 +137,8 @@ public class TaskDAO {
                 participantDAO.deleteParticipantsByTaskId(conn, id);
                 observerDAO.deleteObserversByTaskId(conn, id);
                 checklistItemDAO.deleteChecklistItemsByTaskId(conn, id);
+                commentDAO.deleteCommentsByTaskId(conn, id);
+                historyDAO.deleteHistoriesByTaskId(conn, id);
                 try (PreparedStatement ps = conn.prepareStatement(sql)) {
                     ps.setLong(1, id);
                     ps.executeUpdate();

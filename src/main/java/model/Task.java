@@ -162,11 +162,11 @@ public class Task {
 
     public String getReadableStatus() {
         return switch (getDisplayStatus()) {
-            case "TODO" -> "Chờ thực hiện";
-            case "IN_PROGRESS" -> "Đang diễn ra";
-            case "COMPLETED" -> "Hoàn thành";
-            case "PAUSED" -> "Tạm dừng";
-            case "OVERDUE" -> "Quá hạn";
+            case "TODO" -> "To do";
+            case "IN_PROGRESS" -> "In progress";
+            case "COMPLETED" -> "Completed";
+            case "PAUSED" -> "Paused";
+            case "OVERDUE" -> "Overdue";
             default -> getDisplayStatus();
         };
     }

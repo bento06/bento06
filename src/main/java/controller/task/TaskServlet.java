@@ -1,7 +1,9 @@
 package controller.task;
 
 import dao.TaskChecklistItemDAO;
+import dao.TaskCommentDAO;
 import dao.TaskDAO;
+import dao.TaskHistoryDAO;
 import dao.TaskObserverDAO;
 import dao.TaskParticipantDAO;
 import dao.UserDAO;
@@ -13,24 +15,31 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import model.Task;
 import model.TaskChecklistItem;
-import model.TaskObserver;
-import model.TaskParticipant;
+import model.User;
 
 import java.io.IOException;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 @WebServlet("/tasks")
 public class TaskServlet extends HttpServlet {
     private static final int PAGE_SIZE = 10;
+    private static final String TASK_CREATE = "TASK_CREATE";
+    private static final String TASK_UPDATE = "TASK_UPDATE";
+    private static final String TASK_DELETE = "TASK_DELETE";
+    private static final String TASK_MANAGE_CHECKLIST = "TASK_MANAGE_CHECKLIST";
+    private static final String TASK_UPDATE_STATUS = "TASK_UPDATE_STATUS";
 
     private final TaskDAO taskDAO = new TaskDAO();
     private final TaskParticipantDAO participantDAO = new TaskParticipantDAO();
     private final TaskObserverDAO observerDAO = new TaskObserverDAO();
     private final TaskChecklistItemDAO checklistItemDAO = new TaskChecklistItemDAO();
+    private final TaskCommentDAO commentDAO = new TaskCommentDAO();
+    private final TaskHistoryDAO historyDAO = new TaskHistoryDAO();
     private final UserDAO userDAO = new UserDAO();
 
     @Override
@@ -44,6 +53,7 @@ public class TaskServlet extends HttpServlet {
                 case "detail" -> showDetail(request, response);
                 case "edit" -> showEditForm(request, response);
                 case "delete" -> deleteTask(request, response);
+                case "toggleChecklist" -> toggleChecklist(request, response);
                 case "deleteChecklist" -> deleteChecklist(request, response);
                 default -> listTasks(request, response);
             }
@@ -63,6 +73,7 @@ public class TaskServlet extends HttpServlet {
                 case "update" -> updateTask(request, response);
                 case "toggleChecklist" -> toggleChecklist(request, response);
                 case "addChecklist" -> addChecklist(request, response);
+                case "addComment" -> addComment(request, response);
                 case "updateStatus" -> updateStatus(request, response);
                 default -> listTasks(request, response);
             }
@@ -91,17 +102,20 @@ public class TaskServlet extends HttpServlet {
     }
 
     private void showCreateForm(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        if (!hasTaskCreatePermission(request)) {
-            forwardForbidden(request, response, "TASK_CREATE");
+        if (!hasPermission(request, TASK_CREATE)) {
+            forwardForbidden(request, response, TASK_CREATE);
             return;
         }
+        List<User> departmentUsers = getDepartmentUsersForCurrentUser(request);
         request.setAttribute("users", userDAO.getActiveUsersForTaskSelection());
+        request.setAttribute("departmentUsers", departmentUsers);
+        request.setAttribute("participantUsers", departmentUsers);
         request.getRequestDispatcher("/WEB-INF/views/task/task-create.jsp").forward(request, response);
     }
 
     private void insertTask(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        if (!hasTaskCreatePermission(request)) {
-            forwardForbidden(request, response, "TASK_CREATE");
+        if (!hasPermission(request, TASK_CREATE)) {
+            forwardForbidden(request, response, TASK_CREATE);
             return;
         }
 
@@ -109,15 +123,18 @@ public class TaskServlet extends HttpServlet {
         task.setCreatedBy(currentUserId(request));
         task.setStatus("TODO");
         task.setProgress(0);
+        List<User> departmentUsers = getDepartmentUsersForCurrentUser(request);
+        validateDepartmentAssignee(task.getAssignedTo(), departmentUsers);
 
         List<String> checklistContents = cleanTextValues(request.getParameterValues("checklistContent"));
         long taskId = taskDAO.insertTask(task);
-        participantDAO.insertParticipants(taskId, parseLongValues(request.getParameterValues("participantIds")));
+        participantDAO.insertParticipants(taskId, allowedUserIds(departmentUsers, request.getParameterValues("participantIds")));
         observerDAO.insertObservers(taskId, parseLongValues(request.getParameterValues("observerIds")));
-        insertChecklistItems(taskId, checklistContents, request.getParameterValues("checklistAssignedTo"));
+        insertChecklistItems(taskId, checklistContents, request.getParameterValues("checklistAssignedTo"), departmentUsers);
         taskDAO.refreshProgressAndAutoComplete(taskId);
+        historyDAO.insertHistory(taskId, task.getCreatedBy(), "Created", "Task was created");
 
-        request.getSession().setAttribute("message", "Tạo tác vụ thành công.");
+        request.getSession().setAttribute("message", "Task created successfully.");
         response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + taskId);
     }
 
@@ -131,9 +148,19 @@ public class TaskServlet extends HttpServlet {
 
         long currentUserId = currentUserId(request);
         request.setAttribute("task", task);
+        request.setAttribute("creator", userDAO.findById((int) task.getCreatedBy()));
+        request.setAttribute("assignee", userDAO.findById((int) task.getAssignedTo()));
+        request.setAttribute("participants", task.getParticipants());
+        request.setAttribute("observers", task.getObservers());
+        request.setAttribute("checklistItems", task.getChecklistItems());
+        request.setAttribute("comments", commentDAO.getCommentsByTaskId(id));
+        request.setAttribute("histories", historyDAO.getHistoriesByTaskId(id));
         request.setAttribute("canToggleChecklist", canToggleChecklist(task, currentUserId));
-        request.setAttribute("canManageTask", canManageTask(request, task));
-        request.setAttribute("users", userDAO.getActiveUsersForTaskSelection());
+        request.setAttribute("canUpdateTask", canUpdateTask(request, task));
+        request.setAttribute("canDeleteTask", canDeleteTask(request, task));
+        request.setAttribute("canManageChecklist", canManageChecklist(request, task));
+        request.setAttribute("canUpdateTaskStatus", canUpdateTaskStatus(request, task));
+        request.setAttribute("departmentUsers", getDepartmentUsersForTask(task));
         request.getRequestDispatcher("/WEB-INF/views/task/task-detail.jsp").forward(request, response);
     }
 
@@ -144,15 +171,17 @@ public class TaskServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
             return;
         }
-        if (!canManageTask(request, task)) {
-            forwardForbidden(request, response, "TASK_CREATE");
+        if (!canUpdateTask(request, task)) {
+            forwardForbidden(request, response, TASK_UPDATE);
             return;
         }
 
         request.setAttribute("task", task);
+        List<User> departmentUsers = getDepartmentUsersForTask(task);
         request.setAttribute("users", userDAO.getActiveUsersForTaskSelection());
-        request.setAttribute("participantIds", participantIdSet(task));
-        request.setAttribute("observerIds", observerIdSet(task));
+        request.setAttribute("departmentUsers", departmentUsers);
+        request.setAttribute("participantUsers", departmentUsers);
+        request.setAttribute("canManageChecklist", canManageChecklist(request, task));
         request.getRequestDispatcher("/WEB-INF/views/task/task-edit.jsp").forward(request, response);
     }
 
@@ -163,28 +192,33 @@ public class TaskServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
             return;
         }
-        if (!canManageTask(request, existingTask)) {
-            forwardForbidden(request, response, "TASK_CREATE");
+        if (!canUpdateTask(request, existingTask)) {
+            forwardForbidden(request, response, TASK_UPDATE);
             return;
         }
 
         Task task = buildTaskFromRequest(request);
         task.setId(taskId);
         task.setProgress("COMPLETED".equals(task.getStatus()) ? 100 : taskDAO.calculateProgress(taskId));
+        List<User> departmentUsers = getDepartmentUsersForTask(existingTask);
+        validateDepartmentAssignee(task.getAssignedTo(), departmentUsers);
         taskDAO.updateTask(task);
         taskDAO.replaceTaskRelations(
                 task,
-                parseLongValues(request.getParameterValues("participantIds")),
+                allowedUserIds(departmentUsers, request.getParameterValues("participantIds")),
                 parseLongValues(request.getParameterValues("observerIds"))
         );
 
-        updateChecklistItems(request, taskId);
+        if (canManageChecklist(request, existingTask)) {
+            updateChecklistItems(request, taskId, departmentUsers);
+        }
         if ("COMPLETED".equals(task.getStatus())) {
             taskDAO.updateTaskProgress(taskId, 100);
         } else {
             taskDAO.refreshProgressAndAutoComplete(taskId);
         }
-        request.getSession().setAttribute("message", "Cập nhật tác vụ thành công.");
+        recordTaskUpdateHistory(existingTask, task, currentUserId(request));
+        request.getSession().setAttribute("message", "Task updated successfully.");
         response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + taskId);
     }
 
@@ -195,19 +229,20 @@ public class TaskServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
             return;
         }
-        if (!canManageTask(request, task)) {
-            forwardForbidden(request, response, "TASK_CREATE");
+        if (!canDeleteTask(request, task)) {
+            forwardForbidden(request, response, TASK_DELETE);
             return;
         }
         taskDAO.deleteTask(id);
-        request.getSession().setAttribute("message", "Xoá tác vụ thành công.");
+        request.getSession().setAttribute("message", "Task deleted successfully.");
         response.sendRedirect(request.getContextPath() + "/tasks");
     }
 
     private void toggleChecklist(HttpServletRequest request, HttpServletResponse response) throws Exception {
         long itemId = parseLong(request.getParameter("itemId"), 0);
+        long taskId = parseLong(request.getParameter("taskId"), 0);
         TaskChecklistItem item = checklistItemDAO.getChecklistItemById(itemId);
-        if (item == null) {
+        if (item == null || item.getTaskId() != taskId) {
             response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
             return;
         }
@@ -215,13 +250,21 @@ public class TaskServlet extends HttpServlet {
         Task task = taskDAO.getTaskById(item.getTaskId());
         long currentUserId = currentUserId(request);
         if (!canToggleChecklist(task, currentUserId)) {
-            request.getSession().setAttribute("error", "Bạn không có quyền hoàn thành checklist này.");
+            request.getSession().setAttribute("error", "You do not have permission to complete this checklist item.");
             response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + item.getTaskId());
             return;
         }
 
-        checklistItemDAO.toggleChecklistItem(itemId, "true".equals(request.getParameter("completed")));
+        String completedParameter = request.getParameter("completed");
+        boolean completed = completedParameter == null ? !item.isCompleted() : "true".equals(completedParameter);
+        checklistItemDAO.toggleChecklistItem(itemId, taskId, completed);
         taskDAO.refreshProgressAndAutoComplete(item.getTaskId());
+        historyDAO.insertHistory(
+                item.getTaskId(),
+                currentUserId,
+                "Subtask updated",
+                (completed ? "Completed subtask: " : "Reopened subtask: ") + item.getContent()
+        );
         response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + item.getTaskId());
     }
 
@@ -232,49 +275,80 @@ public class TaskServlet extends HttpServlet {
             response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
             return;
         }
-        if (!canManageTask(request, task)) {
-            forwardForbidden(request, response, "TASK_CREATE");
+        if (!canManageChecklist(request, task)) {
+            forwardForbidden(request, response, TASK_MANAGE_CHECKLIST);
             return;
         }
 
         String content = trim(request.getParameter("content"));
-        if (content != null) {
-            TaskChecklistItem item = new TaskChecklistItem();
-            item.setTaskId(taskId);
-            item.setContent(content);
-            item.setAssignedTo(parseNullableLong(request.getParameter("assignedTo")));
-            checklistItemDAO.insertChecklistItem(item);
-            taskDAO.refreshProgressAndAutoComplete(taskId);
+        if (content == null) {
+            request.getSession().setAttribute("error", "Subtask content is required.");
+            response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + taskId);
+            return;
         }
+
+        TaskChecklistItem item = new TaskChecklistItem();
+        item.setTaskId(taskId);
+        item.setContent(content);
+        item.setAssignedTo(allowedNullableUserId(request.getParameter("assignedTo"), getDepartmentUsersForTask(task)));
+        checklistItemDAO.insertChecklistItem(item);
+        taskDAO.refreshProgressAndAutoComplete(taskId);
+        historyDAO.insertHistory(taskId, currentUserId(request), "Add subtask", "Added subtask: " + content);
         response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + taskId);
     }
 
     private void deleteChecklist(HttpServletRequest request, HttpServletResponse response) throws Exception {
         long itemId = parseLong(request.getParameter("itemId"), 0);
+        long taskId = parseLong(request.getParameter("taskId"), 0);
         TaskChecklistItem item = checklistItemDAO.getChecklistItemById(itemId);
-        if (item == null) {
+        if (item == null || item.getTaskId() != taskId) {
             response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
             return;
         }
         Task task = taskDAO.getTaskById(item.getTaskId());
-        if (!canManageTask(request, task)) {
-            forwardForbidden(request, response, "TASK_CREATE");
+        if (!canManageChecklist(request, task)) {
+            forwardForbidden(request, response, TASK_MANAGE_CHECKLIST);
             return;
         }
-        checklistItemDAO.deleteChecklistItem(itemId);
+        checklistItemDAO.deleteChecklistItem(itemId, taskId);
         taskDAO.refreshProgressAndAutoComplete(item.getTaskId());
+        historyDAO.insertHistory(item.getTaskId(), currentUserId(request), "Delete subtask", "Deleted subtask: " + item.getContent());
         response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + item.getTaskId());
     }
 
-    private void updateStatus(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        long taskId = parseLong(request.getParameter("id"), 0);
+    private void addComment(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        long taskId = parseLong(request.getParameter("taskId"), 0);
         Task task = taskDAO.getTaskById(taskId);
         if (task == null) {
             response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
             return;
         }
-        if (!canManageTask(request, task) && task.getAssignedTo() != currentUserId(request)) {
-            forwardForbidden(request, response, "TASK_VIEW");
+
+        String content = trim(request.getParameter("content"));
+        if (content == null) {
+            request.getSession().setAttribute("error", "Comment content is required.");
+            response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + taskId);
+            return;
+        }
+
+        long currentUserId = currentUserId(request);
+        commentDAO.insertComment(taskId, currentUserId, content);
+        historyDAO.insertHistory(taskId, currentUserId, "Comment", "Added a comment");
+        response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + taskId);
+    }
+
+    private void updateStatus(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        long taskId = parseLong(request.getParameter("id"), 0);
+        if (taskId <= 0) {
+            taskId = parseLong(request.getParameter("taskId"), 0);
+        }
+        Task task = taskDAO.getTaskById(taskId);
+        if (task == null) {
+            response.sendRedirect(request.getContextPath() + "/tasks?error=not_found");
+            return;
+        }
+        if (!canUpdateTaskStatus(request, task)) {
+            forwardForbidden(request, response, TASK_UPDATE_STATUS);
             return;
         }
 
@@ -285,36 +359,42 @@ public class TaskServlet extends HttpServlet {
         } else {
             taskDAO.refreshProgressAndAutoComplete(taskId);
         }
+        historyDAO.insertHistory(
+                taskId,
+                currentUserId(request),
+                "Status changed",
+                "Updated status: " + task.getStatus() + " -> " + status
+        );
         response.sendRedirect(request.getContextPath() + "/tasks?action=detail&id=" + taskId);
     }
 
     private Task buildTaskFromRequest(HttpServletRequest request) {
         Task task = new Task();
-        task.setTitle(requiredTrim(request.getParameter("title"), "Tên tác vụ"));
+        task.setTitle(requiredTrim(request.getParameter("title"), "Task name"));
         task.setDescription(trim(request.getParameter("description")));
         task.setAssignedTo(parseLong(request.getParameter("assignedTo"), 0));
         task.setDeadline(parseRequiredDate(request.getParameter("deadline")));
         task.setStatus(normalizeStatus(request.getParameter("status")));
         task.setAllowParticipantsCompleteChecklist(request.getParameter("allowParticipantsCompleteChecklist") != null);
         if (task.getAssignedTo() <= 0) {
-            throw new IllegalArgumentException("Người phụ trách là bắt buộc.");
+            throw new IllegalArgumentException("Assignee is required.");
         }
         return task;
     }
 
-    private void insertChecklistItems(long taskId, List<String> contents, String[] assignedValues) throws Exception {
+    private void insertChecklistItems(long taskId, List<String> contents, String[] assignedValues, List<User> allowedUsers) throws Exception {
         for (int i = 0; i < contents.size(); i++) {
             TaskChecklistItem item = new TaskChecklistItem();
             item.setTaskId(taskId);
             item.setContent(contents.get(i));
             if (assignedValues != null && i < assignedValues.length) {
-                item.setAssignedTo(parseNullableLong(assignedValues[i]));
+                item.setAssignedTo(allowedNullableUserId(assignedValues[i], allowedUsers));
             }
             checklistItemDAO.insertChecklistItem(item);
         }
     }
 
-    private void updateChecklistItems(HttpServletRequest request, long taskId) throws Exception {
+    private void updateChecklistItems(HttpServletRequest request, long taskId, List<User> allowedUsers) throws Exception {
         String[] itemIds = request.getParameterValues("checklistId");
         String[] contents = request.getParameterValues("checklistContent");
         String[] assignedToValues = request.getParameterValues("checklistAssignedTo");
@@ -328,7 +408,7 @@ public class TaskServlet extends HttpServlet {
                 continue;
             }
             Long assignedTo = assignedToValues != null && i < assignedToValues.length
-                    ? parseNullableLong(assignedToValues[i])
+                    ? allowedNullableUserId(assignedToValues[i], allowedUsers)
                     : null;
             long itemId = itemIds != null && i < itemIds.length ? parseLong(itemIds[i], 0) : 0;
 
@@ -345,8 +425,63 @@ public class TaskServlet extends HttpServlet {
         }
     }
 
-    private boolean canManageTask(HttpServletRequest request, Task task) {
-        return hasTaskCreatePermission(request) || task.getCreatedBy() == currentUserId(request);
+    private void recordTaskUpdateHistory(Task oldTask, Task newTask, long userId) throws Exception {
+        historyDAO.insertHistory(newTask.getId(), userId, "Update", "Task information was updated");
+
+        if (oldTask.getAssignedTo() != newTask.getAssignedTo()) {
+            historyDAO.insertHistory(
+                    newTask.getId(),
+                    userId,
+                    "Assignee changed",
+                    "Updated assignee: " + userDisplayName(oldTask.getAssignedTo()) + " -> " + userDisplayName(newTask.getAssignedTo())
+            );
+        }
+
+        if (!Objects.equals(oldTask.getDeadline(), newTask.getDeadline())) {
+            historyDAO.insertHistory(
+                    newTask.getId(),
+                    userId,
+                    "Deadline changed",
+                    "Updated deadline: " + dateText(oldTask.getDeadline()) + " -> " + dateText(newTask.getDeadline())
+            );
+        }
+
+        if (!Objects.equals(oldTask.getStatus(), newTask.getStatus())) {
+            historyDAO.insertHistory(
+                    newTask.getId(),
+                    userId,
+                    "Status changed",
+                    "Updated status: " + oldTask.getStatus() + " -> " + newTask.getStatus()
+            );
+        }
+    }
+
+    private String userDisplayName(long userId) {
+        User user = userDAO.findById((int) userId);
+        if (user == null) {
+            return String.valueOf(userId);
+        }
+        return user.getFullName();
+    }
+
+    private String dateText(Date date) {
+        return date == null ? "-" : date.toString();
+    }
+
+    private boolean canUpdateTask(HttpServletRequest request, Task task) {
+        return task != null && hasPermission(request, TASK_UPDATE);
+    }
+
+    private boolean canDeleteTask(HttpServletRequest request, Task task) {
+        return task != null && hasPermission(request, TASK_DELETE);
+    }
+
+    private boolean canManageChecklist(HttpServletRequest request, Task task) {
+        return task != null && hasPermission(request, TASK_MANAGE_CHECKLIST);
+    }
+
+    private boolean canUpdateTaskStatus(HttpServletRequest request, Task task) {
+        return task != null && hasPermission(request, TASK_UPDATE_STATUS);
     }
 
     private boolean canToggleChecklist(Task task, long currentUserId) {
@@ -361,13 +496,13 @@ public class TaskServlet extends HttpServlet {
     }
 
     @SuppressWarnings("unchecked")
-    private boolean hasTaskCreatePermission(HttpServletRequest request) {
+    private boolean hasPermission(HttpServletRequest request, String permission) {
         HttpSession session = request.getSession(false);
         if (session == null) {
             return false;
         }
         Set<String> permissions = (Set<String>) session.getAttribute("userPermissions");
-        return permissions != null && permissions.contains("TASK_CREATE");
+        return permissions != null && permissions.contains(permission);
     }
 
     private long currentUserId(HttpServletRequest request) {
@@ -397,6 +532,72 @@ public class TaskServlet extends HttpServlet {
         return new ArrayList<>(ids);
     }
 
+    private List<User> getDepartmentUsersForCurrentUser(HttpServletRequest request) {
+        return getDepartmentUsersForUser(currentUser(request));
+    }
+
+    private List<User> getDepartmentUsersForTask(Task task) {
+        if (task == null) {
+            return userDAO.getActiveUsersForTaskSelection();
+        }
+        return getDepartmentUsersForUser(userDAO.findById((int) task.getCreatedBy()));
+    }
+
+    private List<User> getDepartmentUsersForUser(User user) {
+        if (user == null || user.getDepartmentId() == null || isBusinessOrSystemAdmin(user)) {
+            return userDAO.getActiveUsersForTaskSelection();
+        }
+        return userDAO.findActiveByDepartmentId(user.getDepartmentId());
+    }
+
+    private List<Long> allowedUserIds(List<User> allowedUsers, String[] values) {
+        Set<Long> requestedIds = new LinkedHashSet<>(parseLongValues(values));
+        if (requestedIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        requestedIds.retainAll(allowedUserIdSet(allowedUsers));
+        return new ArrayList<>(requestedIds);
+    }
+
+    private Long allowedNullableUserId(String value, List<User> allowedUsers) {
+        Long userId = parseNullableLong(value);
+        if (userId == null || userId <= 0) {
+            return null;
+        }
+        return allowedUserIdSet(allowedUsers).contains(userId) ? userId : null;
+    }
+
+    private void validateDepartmentAssignee(long assigneeId, List<User> allowedUsers) {
+        if (!allowedUserIdSet(allowedUsers).contains(assigneeId)) {
+            throw new IllegalArgumentException("Assignee must belong to the task creator's department.");
+        }
+    }
+
+    private Set<Long> allowedUserIdSet(List<User> allowedUsers) {
+        Set<Long> ids = new LinkedHashSet<>();
+        if (allowedUsers == null) {
+            return ids;
+        }
+        for (User user : allowedUsers) {
+            ids.add((long) user.getId());
+        }
+        return ids;
+    }
+
+    private User currentUser(HttpServletRequest request) {
+        Object value = request.getSession().getAttribute("currentUser");
+        if (value instanceof User user) {
+            return user;
+        }
+        return userDAO.findById((int) currentUserId(request));
+    }
+
+    private boolean isBusinessOrSystemAdmin(User user) {
+        String roleName = user.getRoleName();
+        return "BUSINESS ADMIN".equalsIgnoreCase(roleName) || "SYSTEM ADMIN".equalsIgnoreCase(roleName);
+    }
+
     private List<String> cleanTextValues(String[] values) {
         List<String> result = new ArrayList<>();
         if (values == null) {
@@ -411,25 +612,9 @@ public class TaskServlet extends HttpServlet {
         return result;
     }
 
-    private Set<Long> participantIdSet(Task task) {
-        Set<Long> ids = new LinkedHashSet<>();
-        for (TaskParticipant participant : task.getParticipants()) {
-            ids.add(participant.getUserId());
-        }
-        return ids;
-    }
-
-    private Set<Long> observerIdSet(Task task) {
-        Set<Long> ids = new LinkedHashSet<>();
-        for (TaskObserver observer : task.getObservers()) {
-            ids.add(observer.getUserId());
-        }
-        return ids;
-    }
-
     private Date parseRequiredDate(String value) {
         if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("Hạn chót là bắt buộc.");
+            throw new IllegalArgumentException("Deadline is required.");
         }
         return Date.valueOf(value);
     }
@@ -470,7 +655,7 @@ public class TaskServlet extends HttpServlet {
     private String requiredTrim(String value, String fieldName) {
         String trimmed = trim(value);
         if (trimmed == null) {
-            throw new IllegalArgumentException(fieldName + " là bắt buộc.");
+            throw new IllegalArgumentException(fieldName + " is required.");
         }
         return trimmed;
     }

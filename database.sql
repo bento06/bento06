@@ -254,6 +254,27 @@ CREATE TABLE task_checklist_items (
     CONSTRAINT fk_task_checklist_task FOREIGN KEY (task_id) REFERENCES tasks(id),
     CONSTRAINT fk_task_checklist_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id)
 );
+
+CREATE TABLE task_comments (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_id BIGINT NOT NULL,
+    user_id INT NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_task_comments_task FOREIGN KEY (task_id) REFERENCES tasks(id),
+    CONSTRAINT fk_task_comments_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE task_histories (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_id BIGINT NOT NULL,
+    user_id INT NOT NULL,
+    action_type VARCHAR(100) NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_task_histories_task FOREIGN KEY (task_id) REFERENCES tasks(id),
+    CONSTRAINT fk_task_histories_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
 CREATE TABLE announcements (
                                id INT PRIMARY KEY AUTO_INCREMENT,
                                title VARCHAR(200) NOT NULL,
@@ -431,7 +452,11 @@ INSERT INTO permissions (code, name, description) VALUES
                                                       ('PROCESS_REQUEST', 'Process request', 'Can process request'),
                                                       ('CREATE_REQUEST', 'Create request', 'Can create new request'),
                                                       ('TASK_VIEW', 'View tasks', 'Can view task management module'),
-                                                      ('TASK_CREATE', 'Create and manage tasks', 'Can create, update, and delete tasks'),
+                                                      ('TASK_CREATE', 'Create task', 'Can create new tasks'),
+                                                      ('TASK_UPDATE', 'Update task', 'Can update task information'),
+                                                      ('TASK_DELETE', 'Delete task', 'Can delete tasks'),
+                                                      ('TASK_MANAGE_CHECKLIST', 'Manage task work items', 'Can add, update, and delete task work items'),
+                                                      ('TASK_UPDATE_STATUS', 'Update task status', 'Can update task progress status'),
                                                       ('ANNOUNCEMENT_VIEW_LIST', 'View announcements', 'Can view announcements available to the user'),
                                                       ('ANNOUNCEMENT_VIEW_DETAIL', 'View announcement detail', 'Can view announcement detail'),
                                                       ('ANNOUNCEMENT_CREATE', 'Create announcement', 'Can create and send announcements');
@@ -459,7 +484,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'HR_MANAGER' AN
                                                                                              'CONTRACT_VIEW_LIST', 'CONTRACT_VIEW_DETAIL', 'CONTRACT_VIEW_OWN', 'CONTRACT_CREATE', 'CONTRACT_UPDATE',
                                                                                              'CONTRACT_TERMINATE', 'CONTRACT_RENEW', 'ATTENDANCE_VIEW_OWN', 'ATTENDANCE_VIEW_DEPARTMENT', 'ATTENDANCE_VIEW_ALL',
                                                                                              'ATTENDANCE_UPDATE', 'ATTENDANCE_EXPORT_REPORT', 'PAYROLL_VIEW_OWN', 'PAYROLL_VIEW_LIST', 'PAYROLL_CONFIRM', 'PAYROLL_EXPORT_REPORT',
-                                                                                              'TASK_VIEW', 'TASK_CREATE',
+                                                                                              'TASK_VIEW', 'TASK_CREATE', 'TASK_UPDATE', 'TASK_DELETE', 'TASK_MANAGE_CHECKLIST', 'TASK_UPDATE_STATUS',
                                                                                              'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL', 'ANNOUNCEMENT_CREATE'
     );
 
@@ -480,7 +505,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'PAYROLL_MANAGE
                                                                                                   'DEPARTMENT_VIEW_EMPLOYEES', 'ATTENDANCE_VIEW_OWN', 'ATTENDANCE_VIEW_DEPARTMENT', 'CONTRACT_VIEW_OWN',
                                                                                                   'PAYROLL_VIEW_OWN', 'PAYROLL_VIEW_LIST', 'PAYROLL_VIEW_DETAIL', 'PAYROLL_GENERATE', 'PAYROLL_UPDATE_COMPONENT',
                                                                                                   'PAYROLL_CONFIRM', 'PAYROLL_EXPORT_REPORT',
-                                                                                              'TASK_VIEW', 'TASK_CREATE',
+                                                                                              'TASK_VIEW', 'TASK_CREATE', 'TASK_UPDATE', 'TASK_DELETE', 'TASK_MANAGE_CHECKLIST', 'TASK_UPDATE_STATUS',
                                                                                                   'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 
@@ -498,7 +523,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'DEPARTMENT_MAN
                                                                                                      'HOMEPAGE_VIEW', 'AUTH_LOGIN', 'AUTH_LOGOUT', 'AUTH_FORGOT_PASSWORD', 'PROFILE_VIEW', 'PROFILE_CHANGE_PASSWORD',
                                                                                                      'DEPARTMENT_VIEW_LIST', 'DEPARTMENT_VIEW_DETAIL', 'DEPARTMENT_VIEW_EMPLOYEES', 'ATTENDANCE_VIEW_OWN',
                                                                                                      'ATTENDANCE_VIEW_DEPARTMENT', 'CONTRACT_VIEW_OWN', 'PAYROLL_VIEW_OWN',
-                                                                                              'TASK_VIEW', 'TASK_CREATE',
+                                                                                              'TASK_VIEW', 'TASK_CREATE', 'TASK_UPDATE', 'TASK_DELETE', 'TASK_MANAGE_CHECKLIST', 'TASK_UPDATE_STATUS',
                                                                                                      'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 

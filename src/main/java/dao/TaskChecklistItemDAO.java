@@ -56,21 +56,23 @@ public class TaskChecklistItemDAO {
     }
 
     public void updateChecklistItem(TaskChecklistItem item) throws SQLException {
-        String sql = "UPDATE task_checklist_items SET content = ?, assigned_to = ? WHERE id = ?";
+        String sql = "UPDATE task_checklist_items SET content = ?, assigned_to = ? WHERE id = ? AND task_id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, item.getContent());
             setNullableLong(ps, 2, item.getAssignedTo());
             ps.setLong(3, item.getId());
+            ps.setLong(4, item.getTaskId());
             ps.executeUpdate();
         }
     }
 
-    public void deleteChecklistItem(long itemId) throws SQLException {
-        String sql = "DELETE FROM task_checklist_items WHERE id = ?";
+    public void deleteChecklistItem(long itemId, long taskId) throws SQLException {
+        String sql = "DELETE FROM task_checklist_items WHERE id = ? AND task_id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, itemId);
+            ps.setLong(2, taskId);
             ps.executeUpdate();
         }
     }
@@ -110,13 +112,14 @@ public class TaskChecklistItemDAO {
         return null;
     }
 
-    public void toggleChecklistItem(long itemId, boolean completed) throws SQLException {
+    public void toggleChecklistItem(long itemId, long taskId, boolean completed) throws SQLException {
         String sql = "UPDATE task_checklist_items SET is_completed = ?, completed_at = " +
-                (completed ? "CURRENT_TIMESTAMP" : "NULL") + " WHERE id = ?";
+                (completed ? "CURRENT_TIMESTAMP" : "NULL") + " WHERE id = ? AND task_id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setBoolean(1, completed);
             ps.setLong(2, itemId);
+            ps.setLong(3, taskId);
             ps.executeUpdate();
         }
     }
