@@ -1,5 +1,6 @@
 package filter;
 
+import dao.UserDAO;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import java.util.Set;
 
 @WebFilter("/*")
 public class PermissionFilter implements Filter {
+    private final UserDAO userDAO = new UserDAO();
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -130,6 +132,11 @@ public class PermissionFilter implements Filter {
         if (path.equals("/payroll/confirm")) return "PAYROLL_CONFIRM";
         if (path.equals("/payroll/export")) return "PAYROLL_EXPORT_REPORT";
 
+        // Announcement
+        if (path.equals("/announcements") && "GET".equals(method)) return "ANNOUNCEMENT_VIEW_LIST";
+        if (path.equals("/announcements/detail") && "GET".equals(method)) return "ANNOUNCEMENT_VIEW_DETAIL";
+        if (path.equals("/announcements/add")) return "ANNOUNCEMENT_CREATE";
+
         // Request
         if (path.equals("/view_my_request") && "GET".equals(method)) return "VIEW_MY_REQUEST";
         if (path.equals("/view_all_request") && "GET".equals(method)) return "VIEW_ALL_REQUEST";
@@ -160,7 +167,18 @@ public class PermissionFilter implements Filter {
             if (requestedUserId == currentUser.getId()) {
                 return userPermissions.contains("ATTENDANCE_VIEW_OWN");
             }
-            return userPermissions.contains("ATTENDANCE_VIEW_ALL");
+            if (userPermissions.contains("ATTENDANCE_VIEW_ALL")) {
+                return true;
+            }
+            if (!userPermissions.contains("ATTENDANCE_VIEW_DEPARTMENT")
+                    || currentUser.getDepartmentId() == null) {
+                return false;
+            }
+
+            User requestedUser = userDAO.findById(requestedUserId);
+            return requestedUser != null
+                    && requestedUser.getDepartmentId() != null
+                    && requestedUser.getDepartmentId().equals(currentUser.getDepartmentId());
         } catch (NumberFormatException e) {
             return false;
         }

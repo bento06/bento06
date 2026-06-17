@@ -3122,6 +3122,7 @@ body.dashboard-body {
 }
 
 .attendance-summary-row span {
+    min-width: 0;
     color: #272a30;
     font-size: 0.9rem;
     font-weight: 450;
@@ -3129,6 +3130,7 @@ body.dashboard-body {
 }
 
 .attendance-summary-row strong {
+    justify-self: end;
     min-width: 58px;
     color: #17191d;
     font-size: 0.9rem;
@@ -3162,6 +3164,7 @@ body.dashboard-body {
         gap: 0.75rem;
     }
 }
+
 /* ============================================
    ENHANCED QUOTE SIDE (LOGIN PAGE)
    ============================================ */

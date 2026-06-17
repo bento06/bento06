@@ -16,6 +16,16 @@
   model.User currentUser = (model.User) session.getAttribute("currentUser");
   boolean isAdmin = (currentUser != null && currentUser.getRoleId() == 1);
   pageContext.setAttribute("isAdmin", isAdmin);
+
+  int unreadAnnouncementCount = 0;
+  java.util.List<model.Announcement> unreadAnnouncements = java.util.Collections.emptyList();
+  if (currentUser != null && userPermissions != null && userPermissions.contains("ANNOUNCEMENT_VIEW_LIST")) {
+    dao.AnnouncementDAO announcementDAO = new dao.AnnouncementDAO();
+    unreadAnnouncementCount = announcementDAO.countUnread(currentUser.getId());
+    unreadAnnouncements = announcementDAO.getLatestUnread(currentUser.getId(), 5);
+  }
+  pageContext.setAttribute("unreadAnnouncementCount", unreadAnnouncementCount);
+  pageContext.setAttribute("unreadAnnouncements", unreadAnnouncements);
 %>
 
 <c:set var="showEmployees"   value="${userPermissions.contains('USER_VIEW_LIST') or userPermissions.contains('USER_CREATE')}" />
@@ -26,6 +36,7 @@
 <c:set var="showAttendance"  value="${userPermissions.contains('ATTENDANCE_VIEW_OWN') or userPermissions.contains('ATTENDANCE_VIEW_DEPARTMENT') or userPermissions.contains('ATTENDANCE_VIEW_ALL') or userPermissions.contains('ATTENDANCE_UPDATE') or userPermissions.contains('ATTENDANCE_EXPORT_REPORT')}" />
 <c:set var="showRequests"    value="${userPermissions.contains('VIEW_MY_REQUEST') or (userPermissions.contains('VIEW_DEPARTMENT_REQUEST') and not empty currentUser.departmentId) or userPermissions.contains('VIEW_ALL_REQUEST') or userPermissions.contains('CREATE_REQUEST')}" />
 <c:set var="showPayroll"     value="${userPermissions.contains('PAYROLL_VIEW_OWN') or userPermissions.contains('PAYROLL_VIEW_LIST') or userPermissions.contains('PAYROLL_GENERATE') or userPermissions.contains('PAYROLL_EXPORT_REPORT')}" />
+<c:set var="showAnnouncements" value="${userPermissions.contains('ANNOUNCEMENT_VIEW_LIST') or userPermissions.contains('ANNOUNCEMENT_CREATE')}" />
 
 <style>
   .submenu {
@@ -37,6 +48,81 @@
   }
   .nav-toggle.open + .submenu {
     display: flex;
+  }
+  .notification-wrapper {
+    position: relative;
+  }
+  .notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+  }
+  .notification-dropdown {
+    position: absolute;
+    top: 42px;
+    right: 0;
+    width: 340px;
+    max-width: calc(100vw - 32px);
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+    display: none;
+    z-index: 100;
+  }
+  .notification-dropdown.show {
+    display: block;
+  }
+  .notification-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    font-weight: 700;
+    color: #111827;
+  }
+  .notification-list {
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .notification-item {
+    display: block;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    text-decoration: none;
+    color: #111827;
+  }
+  .notification-item:hover {
+    background: #f9fafb;
+  }
+  .notification-title {
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .notification-meta {
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .notification-empty {
+    padding: 18px 14px;
+    color: #6b7280;
+    text-align: center;
+  }
+  .notification-footer {
+    display: block;
+    padding: 11px 14px;
+    text-align: center;
+    text-decoration: none;
+    color: #2563eb;
+    font-weight: 600;
   }
 </style>
 
@@ -119,7 +205,31 @@
             </div>
         </div>
         </c:if>
-
+        <!-- Organization Group -->
+        <c:if test="${userPermissions.contains('DEPARTMENT_VIEW_LIST')}">
+        <c:set var="orgActive" value="${currentPath.startsWith(ctx.concat('/admin/company-structure'))}" />
+        <div class="nav-group">
+            <button class="nav-item nav-toggle ${orgActive ? 'open' : ''}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="5" rx="1"></rect>
+                    <rect x="14" y="3" width="7" height="5" rx="1"></rect>
+                    <rect x="8" y="14" width="8" height="5" rx="1"></rect>
+                    <line x1="8" y1="8" x2="12" y2="14"></line>
+                    <line x1="16" y1="8" x2="12" y2="14"></line>
+                </svg>
+                <span>Organization</span>
+                <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
+            <div class="submenu">
+                <a href="${ctx}/admin/company-structure"
+                   class="submenu-item ${currentPath == ctx.concat('/admin/company-structure') ? 'active' : ''}">
+                   View Company Organization
+                </a>
+            </div>
+        </div>
+        </c:if>
         <!-- Positions Group -->
         <c:if test="${showPositions}">
         <c:set var="posActive" value="${currentPath.startsWith(ctx.concat('/position'))}" />
@@ -214,7 +324,10 @@
             </button>
             <div class="submenu">
                 <c:if test="${userPermissions.contains('ATTENDANCE_VIEW_OWN')}">
-                    <a href="${ctx}/attendance/summary?userId=${currentUser.id}" class="submenu-item ${currentPath == ctx.concat('/attendance/summary') && param.userId == currentUser.id ? 'active' : ''}">My Attendance</a>
+                    <a href="${ctx}/attendance/my"
+                       class="submenu-item ${currentPath == ctx.concat('/attendance/my') ? 'active' : ''}">
+                       My Attendance
+                    </a>
                 </c:if>
                 <c:if test="${userPermissions.contains('ATTENDANCE_VIEW_DEPARTMENT')}">
                     <a href="${ctx}/attendance/department" class="submenu-item ${currentPath == ctx.concat('/attendance/department') ? 'active' : ''}">Department Attendance</a>
@@ -302,6 +415,40 @@
             </div>
         </div>
         </c:if>
+        <!-- Chat  -->
+        <a href="${ctx}/chat"
+           class="nav-item ${currentPath == ctx.concat('/chat') ? 'active' : ''}">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-1.76 5.18 8.5 8.5 0 0 1-9.3 3.76 8.38 8.38 0 0 1-5.18-1.76L2 21l3.3-3.3A8.5 8.5 0 0 1 12.5 3a8.38 8.38 0 0 1 5.18 1.76A8.5 8.5 0 0 1 21 11.5z"/>
+            </svg>
+            <span>Messages</span>
+        </a>
+        <!-- Announcements Group -->
+        <c:if test="${showAnnouncements}">
+        <c:set var="announcementActive" value="${currentPath.startsWith(ctx.concat('/announcements'))}" />
+        <div class="nav-group">
+            <button class="nav-item nav-toggle ${announcementActive ? 'open' : ''}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 22V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v18l-4-2-4 2-4-2-4 2z"/>
+                    <path d="M8 6h8"/>
+                    <path d="M8 10h8"/>
+                    <path d="M8 14h5"/>
+                </svg>
+                <span>Announcements</span>
+                <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
+            <div class="submenu">
+                <c:if test="${userPermissions.contains('ANNOUNCEMENT_VIEW_LIST')}">
+                    <a href="${ctx}/announcements" class="submenu-item ${currentPath == ctx.concat('/announcements') ? 'active' : ''}">View announcements</a>
+                </c:if>
+                <c:if test="${userPermissions.contains('ANNOUNCEMENT_CREATE')}">
+                    <a href="${ctx}/announcements/add" class="submenu-item ${currentPath == ctx.concat('/announcements/add') ? 'active' : ''}">Create announcement</a>
+                </c:if>
+            </div>
+        </div>
+        </c:if>
 
         <!-- Others Group (chỉ hiển thị nếu là ADMIN) -->
         <c:if test="${isAdmin}">
@@ -330,12 +477,43 @@
 
 <template id="globalHeaderActions">
   <div class="header-right global-header-actions">
-    <button type="button" class="header-icon" aria-label="Notifications">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-        <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-      </svg>
-    </button>
+    <c:if test="${userPermissions.contains('ANNOUNCEMENT_VIEW_LIST')}">
+      <div class="notification-wrapper">
+        <button type="button" class="header-icon" aria-label="Notifications" data-notification-toggle>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <c:if test="${unreadAnnouncementCount > 0}">
+            <span class="notification-badge">
+              <c:choose>
+                <c:when test="${unreadAnnouncementCount > 99}">99+</c:when>
+                <c:otherwise>${unreadAnnouncementCount}</c:otherwise>
+              </c:choose>
+            </span>
+          </c:if>
+        </button>
+        <div class="notification-dropdown" data-notification-dropdown>
+          <div class="notification-header">Unread announcements</div>
+          <div class="notification-list">
+            <c:choose>
+              <c:when test="${empty unreadAnnouncements}">
+                <div class="notification-empty">No unread announcements.</div>
+              </c:when>
+              <c:otherwise>
+                <c:forEach items="${unreadAnnouncements}" var="notification">
+                  <a class="notification-item" href="${ctx}/announcements/detail?id=${notification.id}">
+                    <p class="notification-title"><c:out value="${notification.title}"/></p>
+                    <p class="notification-meta"><c:out value="${notification.targetDisplay}"/> - ${notification.publishDateDisplay}</p>
+                  </a>
+                </c:forEach>
+              </c:otherwise>
+            </c:choose>
+          </div>
+          <a href="${ctx}/announcements?readStatus=UNREAD" class="notification-footer">View all unread</a>
+        </div>
+      </div>
+    </c:if>
 
     <div class="header-profile" data-profile-dropdown-toggle>
       <c:choose>
@@ -408,14 +586,33 @@
 
       const profileToggle = document.querySelector('[data-profile-dropdown-toggle]');
       const profileDropdown = document.querySelector('[data-profile-dropdown]');
+      const notificationToggle = document.querySelector('[data-notification-toggle]');
+      const notificationDropdown = document.querySelector('[data-notification-dropdown]');
+
+      if (notificationToggle && notificationDropdown) {
+        notificationToggle.addEventListener('click', function(e) {
+          e.stopPropagation();
+          notificationDropdown.classList.toggle('show');
+          if (profileDropdown) {
+            profileDropdown.classList.remove('show');
+          }
+        });
+      }
+
       if (profileToggle && profileDropdown) {
         profileToggle.addEventListener('click', function(e) {
           e.stopPropagation();
           profileDropdown.classList.toggle('show');
+          if (notificationDropdown) {
+            notificationDropdown.classList.remove('show');
+          }
         });
 
         document.addEventListener('click', function() {
           profileDropdown.classList.remove('show');
+          if (notificationDropdown) {
+            notificationDropdown.classList.remove('show');
+          }
         });
       }
     });
