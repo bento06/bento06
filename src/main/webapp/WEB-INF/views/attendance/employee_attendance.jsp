@@ -15,7 +15,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${summaryUserId != null ? 'Attendance Detail' : 'My Attendance'} | HRM</title>
+    <title>Employee Attendance | HRM</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -30,7 +30,7 @@
     <main class="dashboard-main">
         <header class="dashboard-header">
             <div class="header-left">
-               <h1 class="header-title">My Attendance</h1>
+                <h1 class="header-title">Employee Attendance</h1>
             </div>
         </header>
 
@@ -40,9 +40,7 @@
                     <div class="calendar-toolbar">
                         <h2>${displayUser.fullName} (${employeeCode})</h2>
                         <form id="attendancePeriodForm" action="${summaryAction}" method="get">
-                            <c:if test="${not empty summaryUserId}">
-                                <input type="hidden" name="userId" value="${summaryUserId}">
-                            </c:if>
+                            <input type="hidden" name="userId" value="${summaryUserId}">
                             <select id="attendanceMonth" name="month" aria-label="Month">
                                 <option value="1" ${selectedMonth == 1 ? 'selected' : ''}>January</option>
                                 <option value="2" ${selectedMonth == 2 ? 'selected' : ''}>February</option>
@@ -93,7 +91,6 @@
                         <c:set var="todayDate" value="<%= java.time.LocalDate.now() %>" />
                         <c:set var="firstDayOfMonth" value="${daysInMonth[0]}" />
                         <c:set var="dayOfWeekIndex" value="${firstDayOfMonth.dayOfWeek.value - 1}" />
-
                         <c:set var="currentDay" value="${firstDayOfMonth.minusDays(dayOfWeekIndex)}" />
                         <c:set var="lastDayOfMonth" value="${daysInMonth[daysInMonth.size() - 1]}" />
 
@@ -112,11 +109,13 @@
                                                     <c:set var="record" value="${attendanceMap[recordKey]}" />
                                                     <c:choose>
                                                         <c:when test="${not empty record}">
-                                                            <span class="record-chip ${record.cssClass}"
-                                                                  title="${record.status}">
+                                                            <c:url var="updateUrl" value="/attendance/update">
+                                                                <c:param name="id" value="${record.attendanceRecordId}"/>
+                                                            </c:url>
+                                                            <a href="${updateUrl}" class="record-chip ${record.cssClass}" title="${record.status}">
                                                                 <span class="chip-dot"></span>
                                                                 ${record.checkInText} - ${record.checkOutText}
-                                                            </span>
+                                                            </a>
                                                             <c:if test="${record.overtimeHours > 0}">
                                                                 <span class="record-chip chip-ot">OT</span>
                                                             </c:if>
@@ -139,6 +138,7 @@
                     </div>
                 </div>
 
+                <!-- Summary card bên phải giống hệt my_attendance.jsp -->
                 <div class="my-attendance-summary-card">
                     <div class="attendance-work-card">
                         <div class="attendance-work-icon">
