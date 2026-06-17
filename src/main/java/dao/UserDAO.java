@@ -1531,4 +1531,27 @@ public class UserDAO {
         }
         return null; // Trả về null nếu phòng ban chưa có manager hoặc nhân viên chưa thuộc phòng ban
     }
+    public List<User> getActiveUsersForTaskSelection() {
+        List<User> list = new ArrayList<>();
+        String sql = """
+                SELECT u.*, r.name AS role_name, d.name AS department_name, p.name AS position_name
+                FROM users u
+                JOIN roles r ON u.role_id = r.id
+                LEFT JOIN departments d ON u.department_id = d.id
+                LEFT JOIN positions p ON u.position_id = p.id
+                WHERE u.active = TRUE
+                ORDER BY u.full_name
+                """;
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                list.add(mapResultSetToUser(rs));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
 }

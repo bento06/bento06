@@ -209,6 +209,51 @@ CREATE TABLE requests (
 -- 4. ANNOUNCEMENT TABLES
 -- ==========================================
 
+-- Task Management
+CREATE TABLE tasks (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'TODO',
+    deadline DATE NOT NULL,
+    progress INT DEFAULT 0,
+    allow_participants_complete_checklist BOOLEAN DEFAULT FALSE,
+    created_by INT NOT NULL,
+    assigned_to INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tasks_created_by FOREIGN KEY (created_by) REFERENCES users(id),
+    CONSTRAINT fk_tasks_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id)
+);
+
+CREATE TABLE task_participants (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_id BIGINT NOT NULL,
+    user_id INT NOT NULL,
+    CONSTRAINT fk_task_participants_task FOREIGN KEY (task_id) REFERENCES tasks(id),
+    CONSTRAINT fk_task_participants_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT uq_task_participant UNIQUE (task_id, user_id)
+);
+
+CREATE TABLE task_observers (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_id BIGINT NOT NULL,
+    user_id INT NOT NULL,
+    CONSTRAINT fk_task_observers_task FOREIGN KEY (task_id) REFERENCES tasks(id),
+    CONSTRAINT fk_task_observers_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT uq_task_observer UNIQUE (task_id, user_id)
+);
+
+CREATE TABLE task_checklist_items (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_id BIGINT NOT NULL,
+    content VARCHAR(255) NOT NULL,
+    is_completed BOOLEAN DEFAULT FALSE,
+    assigned_to INT NULL,
+    completed_at DATETIME NULL,
+    CONSTRAINT fk_task_checklist_task FOREIGN KEY (task_id) REFERENCES tasks(id),
+    CONSTRAINT fk_task_checklist_assigned_to FOREIGN KEY (assigned_to) REFERENCES users(id)
+);
 CREATE TABLE announcements (
                                id INT PRIMARY KEY AUTO_INCREMENT,
                                title VARCHAR(200) NOT NULL,
@@ -385,6 +430,8 @@ INSERT INTO permissions (code, name, description) VALUES
                                                       ('VIEW_REQUEST_DETAIL', 'View request detail', 'Can view request detail info'),
                                                       ('PROCESS_REQUEST', 'Process request', 'Can process request'),
                                                       ('CREATE_REQUEST', 'Create request', 'Can create new request'),
+                                                      ('TASK_VIEW', 'View tasks', 'Can view task management module'),
+                                                      ('TASK_CREATE', 'Create and manage tasks', 'Can create, update, and delete tasks'),
                                                       ('ANNOUNCEMENT_VIEW_LIST', 'View announcements', 'Can view announcements available to the user'),
                                                       ('ANNOUNCEMENT_VIEW_DETAIL', 'View announcement detail', 'Can view announcement detail'),
                                                       ('ANNOUNCEMENT_CREATE', 'Create announcement', 'Can create and send announcements');
@@ -395,6 +442,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'SYSTEM ADMIN' 
                                                                                                'USER_VIEW_LIST', 'USER_VIEW_DETAIL', 'USER_CREATE', 'USER_UPDATE', 'USER_TOGGLE_STATUS', 'ROLE_VIEW_LIST',
                                                                                                'ROLE_VIEW_PERMISSION', 'ROLE_UPDATE', 'ROLE_TOGGLE_STATUS', 'ROLE_EDIT_PERMISSION', 'ROLE_CREATE',
                                                                                                'DEPARTMENT_MOVE_MEMBER', 'DEPARTMENT_ASSIGN_POSITION',
+                                                                                              'TASK_VIEW',
                                                                                                'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 
@@ -411,6 +459,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'HR_MANAGER' AN
                                                                                              'CONTRACT_VIEW_LIST', 'CONTRACT_VIEW_DETAIL', 'CONTRACT_VIEW_OWN', 'CONTRACT_CREATE', 'CONTRACT_UPDATE',
                                                                                              'CONTRACT_TERMINATE', 'CONTRACT_RENEW', 'ATTENDANCE_VIEW_OWN', 'ATTENDANCE_VIEW_DEPARTMENT', 'ATTENDANCE_VIEW_ALL',
                                                                                              'ATTENDANCE_UPDATE', 'ATTENDANCE_EXPORT_REPORT', 'PAYROLL_VIEW_OWN', 'PAYROLL_VIEW_LIST', 'PAYROLL_CONFIRM', 'PAYROLL_EXPORT_REPORT',
+                                                                                              'TASK_VIEW', 'TASK_CREATE',
                                                                                              'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL', 'ANNOUNCEMENT_CREATE'
     );
 
@@ -421,6 +470,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'HR_STAFF' AND 
                                                                                            'POSITION_VIEW_LIST', 'POSITION_VIEW_DETAIL', 'CONTRACT_VIEW_LIST', 'CONTRACT_VIEW_DETAIL', 'CONTRACT_VIEW_OWN',
                                                                                            'CONTRACT_CREATE', 'CONTRACT_UPDATE', 'CONTRACT_TERMINATE', 'ATTENDANCE_VIEW_OWN', 'ATTENDANCE_VIEW_DEPARTMENT',
                                                                                            'ATTENDANCE_VIEW_ALL', 'ATTENDANCE_UPDATE', 'ATTENDANCE_EXPORT_REPORT', 'PAYROLL_VIEW_OWN',
+                                                                                              'TASK_VIEW',
                                                                                            'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 
@@ -430,6 +480,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'PAYROLL_MANAGE
                                                                                                   'DEPARTMENT_VIEW_EMPLOYEES', 'ATTENDANCE_VIEW_OWN', 'ATTENDANCE_VIEW_DEPARTMENT', 'CONTRACT_VIEW_OWN',
                                                                                                   'PAYROLL_VIEW_OWN', 'PAYROLL_VIEW_LIST', 'PAYROLL_VIEW_DETAIL', 'PAYROLL_GENERATE', 'PAYROLL_UPDATE_COMPONENT',
                                                                                                   'PAYROLL_CONFIRM', 'PAYROLL_EXPORT_REPORT',
+                                                                                              'TASK_VIEW', 'TASK_CREATE',
                                                                                                   'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 
@@ -438,6 +489,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'PAYROLL_STAFF'
                                                                                                 'HOMEPAGE_VIEW', 'AUTH_LOGIN', 'AUTH_LOGOUT', 'AUTH_FORGOT_PASSWORD', 'PROFILE_VIEW', 'PROFILE_CHANGE_PASSWORD',
                                                                                                 'ATTENDANCE_VIEW_ALL', 'ATTENDANCE_EXPORT_REPORT', 'CONTRACT_VIEW_OWN', 'PAYROLL_VIEW_OWN', 'PAYROLL_VIEW_LIST',
                                                                                                 'PAYROLL_VIEW_DETAIL', 'PAYROLL_GENERATE', 'PAYROLL_UPDATE_COMPONENT', 'PAYROLL_EXPORT_REPORT',
+                                                                                              'TASK_VIEW',
                                                                                                 'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 
@@ -446,6 +498,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'DEPARTMENT_MAN
                                                                                                      'HOMEPAGE_VIEW', 'AUTH_LOGIN', 'AUTH_LOGOUT', 'AUTH_FORGOT_PASSWORD', 'PROFILE_VIEW', 'PROFILE_CHANGE_PASSWORD',
                                                                                                      'DEPARTMENT_VIEW_LIST', 'DEPARTMENT_VIEW_DETAIL', 'DEPARTMENT_VIEW_EMPLOYEES', 'ATTENDANCE_VIEW_OWN',
                                                                                                      'ATTENDANCE_VIEW_DEPARTMENT', 'CONTRACT_VIEW_OWN', 'PAYROLL_VIEW_OWN',
+                                                                                              'TASK_VIEW', 'TASK_CREATE',
                                                                                                      'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 
@@ -456,6 +509,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'EMPLOYEE' AND 
                                                                                            'ATTENDANCE_CHECK_IN', 'ATTENDANCE_CHECK_OUT', 'ATTENDANCE_VIEW_OWN', 'CONTRACT_VIEW_OWN', 'PAYROLL_VIEW_OWN',
                                                                                            'DEPARTMENT_VIEW_LIST', 'DEPARTMENT_VIEW_DETAIL', 'DEPARTMENT_VIEW_EMPLOYEES',
                                                                                            'VIEW_MY_REQUEST', 'VIEW_REQUEST_DETAIL', 'CREATE_REQUEST', 'PROCESS_REQUEST',
+                                                                                              'TASK_VIEW',
                                                                                            'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL'
     );
 INSERT INTO labor_contracts (user_id, contract_code, contract_type, start_date, end_date, base_salary, working_time, work_location, status, file_url, note) VALUES

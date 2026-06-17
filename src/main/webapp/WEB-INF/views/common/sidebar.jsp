@@ -34,6 +34,7 @@
 <c:set var="showRoles"       value="${userPermissions.contains('ROLE_VIEW_LIST') or userPermissions.contains('ROLE_CREATE')}" />
 <c:set var="showContracts"   value="${userPermissions.contains('CONTRACT_VIEW_LIST') or userPermissions.contains('CONTRACT_VIEW_OWN') or userPermissions.contains('CONTRACT_CREATE')}" />
 <c:set var="showAttendance"  value="${userPermissions.contains('ATTENDANCE_VIEW_OWN') or userPermissions.contains('ATTENDANCE_VIEW_DEPARTMENT') or userPermissions.contains('ATTENDANCE_VIEW_ALL') or userPermissions.contains('ATTENDANCE_UPDATE') or userPermissions.contains('ATTENDANCE_EXPORT_REPORT')}" />
+<c:set var="showTasks"       value="${userPermissions.contains('TASK_VIEW')}" />
 <c:set var="showPayroll"     value="${userPermissions.contains('PAYROLL_VIEW_OWN') or userPermissions.contains('PAYROLL_VIEW_LIST') or userPermissions.contains('PAYROLL_GENERATE') or userPermissions.contains('PAYROLL_EXPORT_REPORT')}" />
 <c:set var="showAnnouncements" value="${userPermissions.contains('ANNOUNCEMENT_VIEW_LIST') or userPermissions.contains('ANNOUNCEMENT_CREATE')}" />
 
@@ -376,6 +377,28 @@
         </div>
         </c:if>
 
+        <!-- Task Group -->
+        <c:if test="${showTasks}">
+        <c:set var="taskActive" value="${currentPath.startsWith(ctx.concat('/tasks'))}" />
+        <div class="nav-group">
+            <button class="nav-item nav-toggle ${taskActive ? 'open' : ''}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 11l3 3L22 4"/>
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                </svg>
+                <span>Tasks</span>
+                <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"/>
+                </svg>
+            </button>
+            <div class="submenu" style="${taskActive ? 'display: flex !important;' : ''}">
+                <a href="${ctx}/tasks" class="submenu-item ${currentPath == ctx.concat('/tasks') ? 'active' : ''}">View tasks</a>
+                <c:if test="${userPermissions.contains('TASK_CREATE')}">
+                    <a href="${ctx}/tasks?action=create" class="submenu-item ${currentPath == ctx.concat('/tasks') and param.action == 'create' ? 'active' : ''}">Create task</a>
+                </c:if>
+            </div>
+        </div>
+        </c:if>
         <!-- Announcements Group -->
         <c:if test="${showAnnouncements}">
         <c:set var="announcementActive" value="${currentPath.startsWith(ctx.concat('/announcements'))}" />

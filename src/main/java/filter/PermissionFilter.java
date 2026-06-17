@@ -143,6 +143,8 @@ public class PermissionFilter implements Filter {
         if (path.equals("/request_detail") && "GET".equals(method)) return "VIEW_REQUEST_DETAIL";
         if (path.equals("/process_request") && "POST".equals(method)) return "PROCESS_REQUEST";
         if (path.equals("/create_request")) return "CREATE_REQUEST";
+        // Task
+        if (path.equals("/tasks")) return "TASK_VIEW";
         return null;
     }
 
