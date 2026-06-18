@@ -228,16 +228,14 @@ public class RequestDAO {
     public List<Request> getObservedRequests(int userId, String status, String type, String sort, int offset, int limit) {
         List<Request> list = new ArrayList<>();
 
-        StringBuilder sql = new StringBuilder("""
-        SELECT DISTINCT r.*, 
-               u.full_name as proposer_name, 
-               h.full_name as handler_name 
-        FROM requests r
-        LEFT JOIN request_observers ro ON r.id = ro.request_id
-        JOIN users u ON r.user_id = u.id
-        LEFT JOIN users h ON r.handler_id = h.id
-        WHERE ro.observer_id = ?
-    """);
+        StringBuilder sql = new StringBuilder(
+                "SELECT DISTINCT r.*, u.full_name as proposer_name, h.full_name as handler_name " +
+                        "FROM requests r " +
+                        "LEFT JOIN request_observers ro ON r.id = ro.request_id " +
+                        "JOIN users u ON r.user_id = u.id " +
+                        "LEFT JOIN users h ON r.handler_id = h.id " +
+                        "WHERE ro.observer_id = ? AND r.status != 'CANCELLED' "
+        );
 
         if (status != null && !status.isEmpty()) sql.append(" AND r.status = ?");
         if (type != null && !type.isEmpty()) sql.append(" AND r.type = ?");
@@ -268,7 +266,6 @@ public class RequestDAO {
                     r.setHandlerId(rs.getInt("handler_id"));
                     r.setHandlerName(rs.getString("handler_name"));
                     r.setProcessedAt(rs.getTimestamp("processed_at"));
-
                     list.add(r);
                 }
             }
@@ -277,7 +274,6 @@ public class RequestDAO {
         }
         return list;
     }
-
     public List<User> getObserversByRequestId(int requestId) {
         List<User> list = new ArrayList<>();
 
@@ -346,10 +342,15 @@ public class RequestDAO {
     }
 
     public int countObservedRequests(int userId, String status, String type) {
-        StringBuilder sql = new StringBuilder("SELECT COUNT(DISTINCT r.id) FROM requests r LEFT JOIN request_observers ro ON r.id = ro.request_id WHERE ro.observer_id = ?");
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(DISTINCT r.id) FROM requests r " +
+                        "LEFT JOIN request_observers ro ON r.id = ro.request_id " +
+                        "WHERE ro.observer_id = ? AND r.status != 'CANCELLED'"
+        );
         if (status != null && !status.isEmpty()) sql.append(" AND r.status = ?");
         if (type != null && !type.isEmpty()) sql.append(" AND r.type = ?");
-        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
             int index = 1;
             ps.setInt(index++, userId);
             if (status != null && !status.isEmpty()) ps.setString(index++, status);
@@ -362,7 +363,6 @@ public class RequestDAO {
         }
         return 0;
     }
-
     // Lấy danh sách các đơn thuộc một phòng ban (Department Requests)
     public List<Request> getRequestByDepartment(int departmentId, String status, String type, String sort, int offset, int limit) {
         List<Request> list = new ArrayList<>();
