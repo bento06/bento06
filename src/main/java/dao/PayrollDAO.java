@@ -126,7 +126,7 @@ public class PayrollDAO {
             """);
 
         if (keyword != null && !keyword.trim().isEmpty()) {
-            sql.append(" AND BINARY u.full_name LIKE ? ");
+            sql.append(" AND u.full_name COLLATE utf8mb4_vietnamese_ci LIKE ? ");
         }
 
         if (status != null && !status.trim().isEmpty() && !"all".equalsIgnoreCase(status)) {
