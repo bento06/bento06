@@ -2,65 +2,60 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label>Leave Date: *</label>
-            <input type="date" name="leaveDate" id="leaveDate" class="form-control"
-                   min="${today}" required onchange="updateLeaveDays()" />
-        </div>
+<div class="request-group">
+    <label>Proposal Date</label>
+    <input type="text" class="request-input" value="${now}" readonly />
+</div>
 
-        <div class="form-group">
-            <label>Leave Balance Info:</label>
-            <div style="background:#f5f5f5; padding:10px; border-radius:4px;">
-                <strong>Remaining leave balance:</strong> <span id="remainingBalance">${remainingLeave}</span> day(s)<br/>
-                <strong>Requested leave days:</strong> <span id="requestedDays">0</span>
-            </div>
-        </div>
+<div class="request-group">
+    <label>Approver <span class="required-star">*</span></label>
+    <select name="approverId" class="request-select" required>
+        <c:choose>
+            <c:when test="${not empty approver}">
+                <option value="${approver.id}" selected>${approver.fullName} - ${approver.positionName}</option>
+            </c:when>
+            <c:otherwise>
+                <option value="" disabled selected>No department manager available</option>
+            </c:otherwise>
+        </c:choose>
+    </select>
+</div>
 
-        <div class="form-group">
-            <label>Observer(s):</label>
-            <select class="select2-dynamic form-control" name="observerIds" multiple="multiple" style="width:100%">
-                <c:forEach items="${observerList}" var="obs">
-                    <option value="${obs.id}">${obs.fullName} - ${obs.positionName}</option>
-                </c:forEach>
-            </select>
-        </div>
+<div class="request-group">
+    <label for="leaveDate">Leave Date <span class="required-star">*</span></label>
+    <input type="date" name="leaveDate" id="leaveDate" class="request-input"
+           min="${today}" required onchange="updateLeaveDays()" />
+</div>
 
-        <div class="form-group">
-            <label>Reason: *</label>
-            <textarea name="reason" id="reasonEditor" class="form-control" rows="6" required></textarea>
-        </div>
+<div class="request-group">
+    <label>Observer(s)</label>
+    <select class="select2-dynamic request-select" name="observerIds" multiple="multiple" style="width:100%">
+        <c:forEach items="${observerList}" var="obs">
+            <option value="${obs.id}">${obs.fullName} - ${obs.positionName}</option>
+        </c:forEach>
+    </select>
+</div>
+
+<div class="request-group">
+    <div class="balance-text-italic-red">
+        Remaining leave balance: <span id="remainingBalance">${remainingLeave}</span> days<br/>
+        Requested days: <span id="requestedDays">0</span>
     </div>
+</div>
 
-    <div class="col-md-6">
-        <div class="form-group">
-            <label>Proposal Date:</label>
-            <input type="text" class="form-control" value="${now}" readonly />
-        </div>
+<div class="request-group" style="grid-column: 1;">
+    <label for="reasonEditor">Reason <span class="required-star">*</span></label>
+    <textarea name="reason" id="reasonEditor" class="request-textarea" rows="5" required></textarea>
+</div>
 
-        <div class="form-group">
-            <label>Approver: *</label>
-            <select name="approverId" class="form-control" required>
-                <c:choose>
-                    <c:when test="${not empty approver}">
-                        <option value="${approver.id}" selected>${approver.fullName} - ${approver.positionName}</option>
-                    </c:when>
-                    <c:otherwise>
-                        <option value="" disabled selected>No department manager available</option>
-                    </c:otherwise>
-                </c:choose>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label>Notes:</label>
-            <ul style="font-size:0.9em; color:#666;">
-                <li>Your leave request will be reviewed by your department manager.</li>
-                <li>If approved, your attendance for the selected date will be marked as "ON_LEAVE" with full 8 hours credited.</li>
-                <li>You will be notified after processing.</li>
-            </ul>
-        </div>
+<div class="request-group" style="grid-column: 1 / -1;">
+    <label>Notes</label>
+    <div class="request-info-box">
+        <ul>
+            <li>Your leave request will be reviewed by your department manager.</li>
+            <li>If approved, your attendance for the selected date will be marked as "ON_LEAVE" with full 8 hours credited.</li>
+            <li>You will be notified after processing.</li>
+        </ul>
     </div>
 </div>
 
