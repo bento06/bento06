@@ -561,11 +561,14 @@ public class TaskServlet extends HttpServlet {
         if (isPaused(task)) {
             return false;
         }
-        if (task.getAssignedTo() == currentUserId) {
+        if (task.getCreatedBy() == currentUserId) {
             return true;
         }
-        boolean participant = participantDAO.existsByTaskIdAndUserId(task.getId(), currentUserId);
-        return task.isAllowParticipantsCompleteChecklist() && participant;
+        if (!task.isAllowParticipantsCompleteChecklist()) {
+            return false;
+        }
+        return task.getAssignedTo() == currentUserId
+                || participantDAO.existsByTaskIdAndUserId(task.getId(), currentUserId);
     }
 
     @SuppressWarnings("unchecked")
