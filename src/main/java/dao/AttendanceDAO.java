@@ -285,6 +285,19 @@ public class AttendanceDAO {
         }
     }
 
+    public boolean updateOvertimeHours(int recordId, double overtimeHours) {
+        String sql = "UPDATE attendance_records SET overtime_hours = ? WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, overtimeHours);
+            ps.setInt(2, recordId);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public List<AttendanceRecord> getRecordsByUser(int userId, LocalDate start, LocalDate end) {
         List<AttendanceRecord> list = new ArrayList<>();
         String sql = "SELECT * FROM attendance_records WHERE user_id = ? AND work_date BETWEEN ? AND ? ORDER BY work_date";

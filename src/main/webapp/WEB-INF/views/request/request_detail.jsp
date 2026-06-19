@@ -58,6 +58,47 @@
                             <span class="detail-value"><strong>${leaveRequest.leaveDate}</strong></span>
                         </div>
                     </c:if>
+                    <c:if test="${request.type == 'OVERTIME' && not empty overtimeRequest}">
+                        <div class="detail-row">
+                            <span class="detail-label">OT Date:</span>
+                            <span class="detail-value"><strong>${overtimeRequest.overtimeDate}</strong></span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Shift:</span>
+                            <span class="detail-value">${overtimeRequest.shiftStart} - ${overtimeRequest.shiftEnd}</span>
+                        </div>
+                        <div class="detail-row" style="grid-column: 1 / -1; margin-top: 15px;">
+                            <span class="detail-label">OT Participants:</span>
+                            <div class="detail-value" style="width: 100%;">
+                                <table class="table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                    <thead>
+                                        <tr style="background-color: #f5f5f5;">
+                                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Employee</th>
+                                            <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">Status</th>
+                                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Actual Hours</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <c:forEach items="${overtimeParticipants}" var="p">
+                                            <tr>
+                                                <td style="padding: 8px; border: 1px solid #ddd;">${p.userFullName} - ${p.employeeCode}</td>
+                                                <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">
+                                                    <span class="badge badge-${fn:toLowerCase(p.status)}">${p.status}</span>
+                                                </td>
+                                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${p.hoursActual}</td>
+                                            </tr>
+                                        </c:forEach>
+                                    </tbody>
+                                </table>
+                                <c:if test="${request.status == 'APPROVED' && (sessionScope.currentUser.id eq request.approverId || fn:contains(sessionScope.currentUser.roleName, 'HR'))}">
+                                    <form action="confirm_overtime" method="POST" style="margin-top: 15px;">
+                                        <input type="hidden" name="requestId" value="${request.id}">
+                                        <button type="submit" class="btn btn-success" onclick="return confirm('Bạn có chắc chắn muốn xác nhận tính giờ OT cho request này?');">Xác nhận OT (Confirm Overtime)</button>
+                                    </form>
+                                </c:if>
+                            </div>
+                        </div>
+                    </c:if>
                     <div class="detail-row">
                         <span class="detail-label">Approver:</span>
                         <span class="detail-value">${request.approverName}</span>

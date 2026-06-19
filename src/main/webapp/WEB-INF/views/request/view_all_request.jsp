@@ -66,7 +66,19 @@
                     <tbody>
                     <c:forEach var="req" items="${requestList}">
                         <tr>
-                            <td>${req.readableType}</td>
+                            <td>
+                                ${req.readableType}
+                                <c:choose>
+                                    <c:when test="${req.type == 'OVERTIME'}">
+                                        <jsp:useBean id="otDao_all" class="dao.OvertimeRequestDAO"/>
+                                        <br><small style="color: #666;">Date: ${otDao_all.getByRequestId(req.id).overtimeDate}</small>
+                                    </c:when>
+                                    <c:when test="${req.type == 'LEAVE_REQUEST'}">
+                                        <jsp:useBean id="lrDao_all" class="dao.LeaveRequestDAO"/>
+                                        <br><small style="color: #666;">Date: ${lrDao_all.getByRequestId(req.id).leaveDate}</small>
+                                    </c:when>
+                                </c:choose>
+                            </td>
                             <td>${req.proposerName}</td>
                             <td><span class="badge badge-${fn:toLowerCase(req.status)}">${req.status}</span></td>
                             <td><fmt:formatDate value="${req.createdAt}" pattern="dd/MM/yyyy HH:mm"/></td>

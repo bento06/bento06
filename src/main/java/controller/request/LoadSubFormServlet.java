@@ -133,6 +133,47 @@ public class LoadSubFormServlet extends HttpServlet {
             jspPath = "/WEB-INF/views/request/subforms/position_handover.jsp";
         } else if ("EMP_MOVE_REMOVE".equals(type)) {
             jspPath = "/WEB-INF/views/request/subforms/move_remove.jsp";
+        } else if ("OVERTIME".equals(type)) {
+            User currentUser = userDAO.findById(user.getId());
+            int deptId = currentUser != null && currentUser.getDepartmentId() != null ? currentUser.getDepartmentId() : 0;
+            if (deptId > 0) {
+                Department dept = departmentDAO.getDepartmentById(deptId);
+                request.setAttribute("departmentName", dept != null ? dept.getName() : "N/A");
+            } else {
+                request.setAttribute("departmentName", "N/A");
+            }
+
+            request.setAttribute("proposer", userDAO.findById(currentUser.getId()));
+            request.setAttribute("today", LocalDate.now().toString());
+            request.setAttribute("now", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+            
+            List<User> hrManagers = userDAO.getUserByPosition("HR Manager");
+            request.setAttribute("approverList", hrManagers);
+
+            List<User> deptEmployees = userDAO.getAllEmployeesByDepartment(deptId);
+            List<User> deptEmployeesFiltered = new ArrayList<>();
+            if (deptEmployees != null) {
+                for (User emp : deptEmployees) {
+                    if (emp.getId() != currentUser.getId() && emp.isActive()) {
+                        deptEmployeesFiltered.add(emp);
+                    }
+                }
+            }
+            request.setAttribute("deptEmployees", deptEmployees);
+
+            List<User> observers = new ArrayList<>();
+            List<User> allManagers = userDAO.getAllDeptManager();
+            if(hrManagers != null) allManagers.addAll(hrManagers);
+            List<User> payrollManagers = userDAO.getUserByPosition("Payroll Manager");
+            if(payrollManagers != null) allManagers.addAll(payrollManagers);
+            for (User mgr : allManagers) {
+                if (mgr.getId() != currentUser.getId() && !observers.contains(mgr)) {
+                    observers.add(mgr);
+                }
+            }
+            request.setAttribute("observerList", observers);
+
+            jspPath = "/WEB-INF/views/request/subforms/overtime.jsp";
         }
 
         try {

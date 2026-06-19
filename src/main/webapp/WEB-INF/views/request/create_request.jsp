@@ -36,6 +36,13 @@
                             <c:when test="${param.error == 'leave_date_duplicate_request'}">A leave request for this date already exists (pending or approved).</c:when>
                             <c:when test="${param.error == 'leave_balance_exhausted'}">You have no remaining leave balance. Cannot submit request.</c:when>
                             <c:when test="${param.error == 'missing_approver'}">Please select an approver.</c:when>
+                            <c:when test="${param.error == 'missing_department'}">You must be assigned to a department to create this request.</c:when>
+                            <c:when test="${param.error == 'missing_date'}">Please select an overtime date.</c:when>
+                            <c:when test="${param.error == 'date_past'}">Overtime date cannot be in the past.</c:when>
+                            <c:when test="${param.error == 'date_weekend'}">Overtime is only allowed from Monday to Friday.</c:when>
+                            <c:when test="${param.error == 'reason_too_short'}">The reason must be at least 10 characters long.</c:when>
+                            <c:when test="${param.error == 'missing_employees'}">Please select at least one employee to work overtime.</c:when>
+                            <c:when test="${param.error == 'duplicate_overtime'}">One or more selected employees already have an overtime request (pending or approved) on this date.</c:when>
                             <c:when test="${param.error == 'system_error'}">A system error occurred. Please try again later.</c:when>
                             <c:otherwise>${param.error}</c:otherwise>
                         </c:choose>
@@ -81,6 +88,11 @@ $(document).ready(function() {
                 data: { type: selectedType },
                 success: function(htmlResult) {
                     $('#dynamicFormContainer').html(htmlResult);
+                    if (selectedType === 'OVERTIME') {
+                        $('form').attr('action', 'create_overtime_request');
+                    } else {
+                        $('form').attr('action', 'create_request');
+                    }
                     // Re-init Select2
                     $('.select2-dynamic').select2({
                         placeholder: "Select options...",
