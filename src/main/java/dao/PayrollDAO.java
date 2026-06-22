@@ -405,4 +405,104 @@ public class PayrollDAO {
         }
         return totalRows;
     }
+
+    public List<Payroll> findPayrollsByDepartment(Integer departmentId, Integer month, Integer year) {
+        List<Payroll> list = new ArrayList<>();
+
+        StringBuilder sql = new StringBuilder("""
+        SELECT p.*, 
+               u.full_name AS employee_name, 
+               d.name AS department_name, 
+               pos.name AS position_name
+        FROM payrolls p
+        JOIN users u ON p.user_id = u.id
+        LEFT JOIN departments d ON u.department_id = d.id
+        LEFT JOIN positions pos ON u.position_id = pos.id
+        WHERE p.month = ? AND p.year = ?
+    """);
+
+        if (departmentId != null && departmentId > 0) {
+            sql.append(" AND u.department_id = ? ");
+        }
+
+        sql.append(" ORDER BY u.full_name ASC ");
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            ps.setInt(1, month);
+            ps.setInt(2, year);
+
+            if (departmentId != null && departmentId > 0) {
+                ps.setInt(3, departmentId);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Payroll p = new Payroll();
+                    p.setId(rs.getInt("id"));
+                    p.setUserId(rs.getInt("user_id"));
+                    p.setMonth(rs.getInt("month"));
+                    p.setYear(rs.getInt("year"));
+                    p.setExpectedHours(rs.getDouble("expected_hours"));
+                    p.setActualHours(rs.getDouble("actual_hours"));
+                    p.setBasicSalary(rs.getDouble("basic_salary"));
+                    p.setRateMultiplier(rs.getDouble("rate_multiplier"));
+                    p.setTotalIncome(rs.getDouble("total_income"));
+                    p.setBonus(rs.getDouble("bonus"));
+                    p.setDescription(rs.getString("description"));
+                    p.setSocialInsurance(rs.getDouble("social_insurance"));
+                    p.setHealthInsurance(rs.getDouble("health_insurance"));
+                    p.setUnemploymentInsurance(rs.getDouble("unemployment_insurance"));
+                    p.setIncomeBeforeTax(rs.getDouble("income_before_tax"));
+                    p.setTaxableIncome(rs.getDouble("taxable_income"));
+                    p.setIncomeTax(rs.getDouble("income_tax"));
+                    p.setNetPay(rs.getDouble("net_pay"));
+                    p.setStatus(rs.getString("status"));
+
+                    // Set thêm các thuộc tính phụ phục vụ hiển thị báo cáo Excel
+                    p.setEmployeeName(rs.getString("employee_name"));
+                    p.setDepartmentName(rs.getString("department_name"));
+                    p.setPositionName(rs.getString("position_name"));
+
+                    list.add(p);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public int countEmployeesWithPayroll(Integer departmentId, int month, int year) {
+        StringBuilder sql = new StringBuilder("""
+            SELECT COUNT(DISTINCT p.user_id)
+            FROM payrolls p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.month = ? AND p.year = ?
+        """);
+
+        if (departmentId != null && departmentId > 0) {
+            sql.append(" AND u.department_id = ? ");
+        }
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+
+            ps.setInt(1, month);
+            ps.setInt(2, year);
+            if (departmentId != null && departmentId > 0) {
+                ps.setInt(3, departmentId);
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }
