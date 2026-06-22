@@ -373,6 +373,9 @@
                     <c:if test="${userPermissions.contains('VIEW_MY_REQUEST')}">
                         <a href="${ctx}/view_my_request" class="submenu-item ${currentPath == ctx.concat('/view_my_request') ? 'active' : ''}">View my requests</a>
                     </c:if>
+                    <!-- Mọi người dùng đăng nhập đều có thể được làm approver, nên cứ hiển thị menu Pending Approvals -->
+                    <a href="${ctx}/view_pending_request" class="submenu-item ${currentPath == ctx.concat('/view_pending_request') ? 'active' : ''}">Pending Approvals</a>
+                    
                     <c:if test="${userPermissions.contains('VIEW_DEPARTMENT_REQUEST') and not empty currentUser.departmentId}">
                         <a href="${ctx}/view_department_request" class="submenu-item ${currentPath == ctx.concat('/view_department_request') ? 'active' : ''}">View department requests</a>
                     </c:if>
@@ -405,10 +408,13 @@
                     <a href="${ctx}/payroll/my" class="submenu-item ${currentPath == ctx.concat('/payroll/my') ? 'active' : ''}">My Payroll</a>
                 </c:if>
                 <c:if test="${userPermissions.contains('PAYROLL_VIEW_LIST')}">
-                    <a href="${ctx}/payroll/list" class="submenu-item ${currentPath == ctx.concat('/payroll/list') ? 'active' : ''}">Payroll List</a>
+                    <a href="${ctx}/payroll/department" class="submenu-item ${currentPath == ctx.concat('/payroll/department') ? 'active' : ''}">Payroll List</a>
                 </c:if>
                 <c:if test="${userPermissions.contains('PAYROLL_GENERATE')}">
                     <a href="${ctx}/payroll/generate" class="submenu-item ${currentPath == ctx.concat('/payroll/generate') ? 'active' : ''}">Generate Payroll</a>
+                </c:if>
+                <c:if test="${userPermissions.contains('PAYROLL_EXPORT_REPORT')}">
+                    <a href="${ctx}/payroll/export" class="submenu-item ${currentPath == ctx.concat('/payroll/export') ? 'active' : ''}">Export Payrolls</a>
                 </c:if>
             </div>
         </div>

@@ -131,7 +131,7 @@
 
                 <label class="inline-checkbox">
                     <input type="checkbox" name="allowParticipantsCompleteChecklist" value="true" ${task.allowParticipantsCompleteChecklist ? 'checked' : ''}>
-                    Allow participants to complete checklist
+                    Allow assignee and participants to complete checklist
                 </label>
 
                 <c:if test="${canManageChecklist and task.status != 'PAUSED'}">
