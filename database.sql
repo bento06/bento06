@@ -369,10 +369,70 @@ CREATE TABLE task_histories (
 );
 
 -- ============================================================
--- 10. INSERT DỮ LIỆU MẪU
+-- 10. LEAVE REQUESTS (bổ sung leave_type)
 -- ============================================================
 
--- 10.1. VAI TRÒ
+CREATE TABLE leave_requests (
+                                id INT PRIMARY KEY AUTO_INCREMENT,
+                                request_id INT NOT NULL,
+                                leave_date DATE NOT NULL,
+                                leave_type ENUM('ON_LEAVE', 'LEAVE') NOT NULL DEFAULT 'ON_LEAVE',
+                                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                CONSTRAINT fk_leave_request FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
+                                UNIQUE KEY unique_leave_request (request_id)
+);
+CREATE TABLE attendance_change_requests (
+                                            id INT PRIMARY KEY AUTO_INCREMENT,
+                                            request_id INT NOT NULL UNIQUE,
+                                            work_date DATE NOT NULL,
+                                            desired_check_in TIME NULL,
+                                            desired_check_out TIME NULL,
+                                            reason TEXT,
+                                            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                                            CONSTRAINT fk_attendance_change_request FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE
+);
+-- ============================================================
+-- 11. OVERTIME MODULE
+-- ============================================================
+
+CREATE TABLE overtime_requests (
+                                   id INT AUTO_INCREMENT PRIMARY KEY,
+                                   request_id INT NOT NULL UNIQUE,
+                                   department_id INT NOT NULL,
+                                   overtime_date DATE NOT NULL,
+                                   shift_start TIME NOT NULL DEFAULT '17:00:00',
+                                   shift_end TIME NOT NULL DEFAULT '19:00:00',
+                                   total_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
+                                   reason TEXT,
+                                   created_by INT NOT NULL,
+                                   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                   updated_at DATETIME,
+                                   CONSTRAINT fk_overtime_request FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
+                                   CONSTRAINT fk_overtime_department FOREIGN KEY (department_id) REFERENCES departments(id),
+                                   CONSTRAINT fk_overtime_created_by FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE TABLE overtime_participants (
+                                       id INT AUTO_INCREMENT PRIMARY KEY,
+                                       overtime_request_id INT NOT NULL,
+                                       user_id INT NOT NULL,
+                                       status ENUM('PENDING', 'REGISTERED', 'COMPLETED', 'PARTIAL', 'ABSENT', 'REJECTED', 'CANCELLED') DEFAULT 'PENDING',
+                                       hours_actual DECIMAL(4,1) DEFAULT 0.0,
+                                       confirmed_at DATETIME,
+                                       created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                       CONSTRAINT fk_overtime_participants_request FOREIGN KEY (overtime_request_id) REFERENCES overtime_requests(id) ON DELETE CASCADE,
+                                       CONSTRAINT fk_overtime_participants_user FOREIGN KEY (user_id) REFERENCES users(id),
+                                       UNIQUE KEY uk_ot_participant (overtime_request_id, user_id)
+);
+
+CREATE INDEX idx_overtime_participants_user ON overtime_participants(user_id);
+CREATE INDEX idx_overtime_requests_date ON overtime_requests(overtime_date);
+
+-- ============================================================
+-- 12. INSERT DỮ LIỆU MẪU
+-- ============================================================
+
+-- 12.1. VAI TRÒ
 INSERT INTO roles (name, description, active) VALUES
                                                   ('SYSTEM ADMIN', 'System administrator: manages users, roles, and permissions', TRUE),
                                                   ('BUSINESS ADMIN', 'Business administrator: has all permissions in the system', TRUE),
@@ -383,14 +443,14 @@ INSERT INTO roles (name, description, active) VALUES
                                                   ('DEPARTMENT_MANAGER', 'Manages employees within their own department', TRUE),
                                                   ('EMPLOYEE', 'Normal employee with self-service functions', TRUE);
 
--- 10.2. PHÒNG BAN
+-- 12.2. PHÒNG BAN
 INSERT INTO departments (name, description, active) VALUES
                                                         ('Human Resources', 'Human resource department', TRUE),
                                                         ('Information Technology', 'Information technology department', TRUE),
                                                         ('Finance', 'Finance department (Payroll)', TRUE),
                                                         ('Sales', 'Sales department', TRUE);
 
--- 10.3. CHỨC VỤ
+-- 12.3. CHỨC VỤ
 INSERT INTO positions (name, description, active) VALUES
                                                       ('System Administrator', 'Responsible for system administration', TRUE),
                                                       ('HR Manager', 'Responsible for HR management', TRUE),
@@ -400,7 +460,7 @@ INSERT INTO positions (name, description, active) VALUES
                                                       ('Department Manager', 'Responsible for managing a department', TRUE),
                                                       ('Employee', 'Normal employee position', TRUE);
 
--- 10.4. PHÒNG BAN - CHỨC VỤ
+-- 12.4. PHÒNG BAN - CHỨC VỤ
 INSERT INTO department_positions (department_id, position_id) VALUES
                                                                   ((SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Manager')),
                                                                   ((SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Staff')),
@@ -409,47 +469,77 @@ INSERT INTO department_positions (department_id, position_id) VALUES
                                                                   ((SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Manager')),
                                                                   ((SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff')),
                                                                   ((SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Department Manager')),
-                                                                  ((SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Employee'));
+                                                                  ((SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Employee')),
+                                                                  -- Dòng bổ sung cho phòng IT + Department Manager
+                                                                  ((SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'Department Manager'));
 
--- 10.5. NGƯỜI DÙNG
+-- 12.5. NGƯỜI DÙNG
 INSERT INTO users (
     employee_code, full_name, email, password, phone, gender,
     date_of_birth, address, avatar_url, role_id, department_id, position_id,
     hire_date, employment_status, active
 ) VALUES
-      ('EMP001', 'Nguyễn Minh Quân', 'admin@company.com', '123456', '0900000001', 'Male', '1998-01-10 00:00:00', 'Hà Nội', NULL, (SELECT id FROM roles WHERE name = 'SYSTEM ADMIN'), (SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'System Administrator'), '2024-01-01', 'WORKING', TRUE),
-      ('EMP002', 'Trần Đức Anh', 'ducanh.it@company.com', '123456', '0900000002', 'Male', '2000-03-15 00:00:00', 'Đà Nẵng', NULL, (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-01-10', 'WORKING', TRUE),
-      ('EMP003', 'Phạm Gia Huy', 'giahuy.it@company.com', '123456', '0900000003', 'Male', '2001-07-20 00:00:00', 'Hồ Chí Minh', NULL, (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-02-01', 'WORKING', TRUE),
-      ('EMP004', 'Lê Hoàng Nam', 'hoangnam.it@company.com', '123456', '0900000004', 'Male', '1999-11-05 00:00:00', 'Hà Nội', NULL, (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-02-15', 'WORKING', TRUE),
-      ('EMP005', 'Nguyễn Thu Hà', 'hrmanager@company.com', '123456', '0900000005', 'Female', '1995-02-12 00:00:00', 'Hà Nội', NULL, (SELECT id FROM roles WHERE name = 'HR_MANAGER'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Manager'), '2024-01-15', 'WORKING', TRUE),
-      ('EMP006', 'Trần Mai Anh', 'maianh.hr@company.com', '123456', '0900000006', 'Female', '1999-04-18 00:00:00', 'Hà Nội', NULL, (SELECT id FROM roles WHERE name = 'HR_STAFF'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Staff'), '2024-02-01', 'WORKING', TRUE),
-      ('EMP007', 'Phạm Ngọc Linh', 'ngoclinh.hr@company.com', '123456', '0900000007', 'Female', '2000-08-25 00:00:00', 'Hồ Chí Minh', NULL, (SELECT id FROM roles WHERE name = 'HR_STAFF'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Staff'), '2024-02-20', 'WORKING', TRUE),
-      ('EMP008', 'Vũ Hải Yến', 'haiyen.hr@company.com', '123456', '0900000008', 'Female', '2001-12-03 00:00:00', 'Đà Nẵng', NULL, (SELECT id FROM roles WHERE name = 'HR_STAFF'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Staff'), '2024-03-01', 'WORKING', TRUE),
-      ('EMP009', 'Đỗ Quang Huy', 'payrollmanager@company.com', '123456', '0900000009', 'Male', '1994-06-09 00:00:00', 'Hồ Chí Minh', NULL, (SELECT id FROM roles WHERE name = 'PAYROLL_MANAGER'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Manager'), '2024-01-20', 'WORKING', TRUE),
-      ('EMP010', 'Nguyễn Thảo Vy', 'thaovy.payroll@company.com', '123456', '0900000010', 'Female', '2000-09-14 00:00:00', 'Hồ Chí Minh', NULL, (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-02-10', 'WORKING', TRUE),
-      ('EMP011', 'Bùi Minh Khang', 'minhkhang.payroll@company.com', '123456', '0900000011', 'Male', '1998-10-22 00:00:00', 'Hà Nội', NULL, (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-03-05', 'WORKING', TRUE),
-      ('EMP012', 'Lê Phương Anh', 'phuonganh.payroll@company.com', '123456', '0900000012', 'Female', '2001-05-17 00:00:00', 'Đà Nẵng', NULL, (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-03-18', 'WORKING', TRUE),
-      ('EMP013', 'Hoàng Minh Đức', 'salesmanager@company.com', '123456', '0900000013', 'Male', '1993-03-30 00:00:00', 'Hà Nội', NULL, (SELECT id FROM roles WHERE name = 'DEPARTMENT_MANAGER'), (SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Department Manager'), '2024-01-25', 'WORKING', TRUE),
-      ('EMP014', 'Nguyễn Khánh Ly', 'khanhly.sales@company.com', '123456', '0900000014', 'Female', '2000-07-11 00:00:00', 'Hồ Chí Minh', NULL, (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-02-12', 'WORKING', TRUE),
-      ('EMP015', 'Trần Quốc Bảo', 'quocbao.sales@company.com', '123456', '0900000015', 'Male', '1999-01-28 00:00:00', 'Đà Nẵng', NULL, (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-03-08', 'WORKING', TRUE),
-      ('EMP016', 'Phan Bảo Long', 'businessadmin@company.com', '123456', '0900000016', 'Male', '1996-08-22 00:00:00', 'Hà Nội', NULL, (SELECT id FROM roles WHERE name = 'BUSINESS ADMIN'), NULL, NULL, '2024-04-01', 'WORKING', TRUE),
-      ('EMP017', 'Đặng Thanh Hương', 'payroll@company.com', '123456', '0900000017', 'Female', '1997-05-14 00:00:00', 'Hồ Chí Minh', NULL, (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-04-10', 'WORKING', TRUE);
+      -- System Admin (không thuộc phòng ban, không position)
+      ('EMP001', 'Nguyễn Minh Quân', 'admin@company.com', '123456', '0900000001', 'Male', '1998-01-10 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'SYSTEM ADMIN'), NULL, NULL, '2024-01-01', 'WORKING', TRUE),
 
--- 10.6. CẬP NHẬT AVATAR & TRƯỞNG PHÒNG
+      -- Nguyễn Minh Quân – Dept Manager của IT (mới thêm)
+      ('EMP018', 'Nguyễn Minh Quân', 'minhquan.it@company.com', '123456', '0900000018', 'Male', '1998-01-10 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'DEPARTMENT_MANAGER'),
+       (SELECT id FROM departments WHERE name = 'Information Technology'),
+       (SELECT id FROM positions WHERE name = 'Department Manager'),
+       '2024-05-01', 'WORKING', TRUE),
+
+      ('EMP002', 'Trần Đức Anh', 'ducanh.it@company.com', '123456', '0900000002', 'Male', '2000-03-15 00:00:00', 'Đà Nẵng', NULL,
+       (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-01-10', 'WORKING', TRUE),
+      ('EMP003', 'Phạm Gia Huy', 'giahuy.it@company.com', '123456', '0900000003', 'Male', '2001-07-20 00:00:00', 'Hồ Chí Minh', NULL,
+       (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-02-01', 'WORKING', TRUE),
+      ('EMP004', 'Lê Hoàng Nam', 'hoangnam.it@company.com', '123456', '0900000004', 'Male', '1999-11-05 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Information Technology'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-02-15', 'WORKING', TRUE),
+      ('EMP005', 'Nguyễn Thu Hà', 'hrmanager@company.com', '123456', '0900000005', 'Female', '1995-02-12 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'HR_MANAGER'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Manager'), '2024-01-15', 'WORKING', TRUE),
+      ('EMP006', 'Trần Mai Anh', 'maianh.hr@company.com', '123456', '0900000006', 'Female', '1999-04-18 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'HR_STAFF'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Staff'), '2024-02-01', 'WORKING', TRUE),
+      ('EMP007', 'Phạm Ngọc Linh', 'ngoclinh.hr@company.com', '123456', '0900000007', 'Female', '2000-08-25 00:00:00', 'Hồ Chí Minh', NULL,
+       (SELECT id FROM roles WHERE name = 'HR_STAFF'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Staff'), '2024-02-20', 'WORKING', TRUE),
+      ('EMP008', 'Vũ Hải Yến', 'haiyen.hr@company.com', '123456', '0900000008', 'Female', '2001-12-03 00:00:00', 'Đà Nẵng', NULL,
+       (SELECT id FROM roles WHERE name = 'HR_STAFF'), (SELECT id FROM departments WHERE name = 'Human Resources'), (SELECT id FROM positions WHERE name = 'HR Staff'), '2024-03-01', 'WORKING', TRUE),
+      ('EMP009', 'Đỗ Quang Huy', 'payrollmanager@company.com', '123456', '0900000009', 'Male', '1994-06-09 00:00:00', 'Hồ Chí Minh', NULL,
+       (SELECT id FROM roles WHERE name = 'PAYROLL_MANAGER'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Manager'), '2024-01-20', 'WORKING', TRUE),
+      ('EMP010', 'Nguyễn Thảo Vy', 'thaovy.payroll@company.com', '123456', '0900000010', 'Female', '2000-09-14 00:00:00', 'Hồ Chí Minh', NULL,
+       (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-02-10', 'WORKING', TRUE),
+      ('EMP011', 'Bùi Minh Khang', 'minhkhang.payroll@company.com', '123456', '0900000011', 'Male', '1998-10-22 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-03-05', 'WORKING', TRUE),
+      ('EMP012', 'Lê Phương Anh', 'phuonganh.payroll@company.com', '123456', '0900000012', 'Female', '2001-05-17 00:00:00', 'Đà Nẵng', NULL,
+       (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-03-18', 'WORKING', TRUE),
+      ('EMP013', 'Hoàng Minh Đức', 'salesmanager@company.com', '123456', '0900000013', 'Male', '1993-03-30 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'DEPARTMENT_MANAGER'), (SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Department Manager'), '2024-01-25', 'WORKING', TRUE),
+      ('EMP014', 'Nguyễn Khánh Ly', 'khanhly.sales@company.com', '123456', '0900000014', 'Female', '2000-07-11 00:00:00', 'Hồ Chí Minh', NULL,
+       (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-02-12', 'WORKING', TRUE),
+      ('EMP015', 'Trần Quốc Bảo', 'quocbao.sales@company.com', '123456', '0900000015', 'Male', '1999-01-28 00:00:00', 'Đà Nẵng', NULL,
+       (SELECT id FROM roles WHERE name = 'EMPLOYEE'), (SELECT id FROM departments WHERE name = 'Sales'), (SELECT id FROM positions WHERE name = 'Employee'), '2024-03-08', 'WORKING', TRUE),
+      ('EMP016', 'Phan Bảo Long', 'businessadmin@company.com', '123456', '0900000016', 'Male', '1996-08-22 00:00:00', 'Hà Nội', NULL,
+       (SELECT id FROM roles WHERE name = 'BUSINESS ADMIN'), NULL, NULL, '2024-04-01', 'WORKING', TRUE),
+      ('EMP017', 'Đặng Thanh Hương', 'payroll@company.com', '123456', '0900000017', 'Female', '1997-05-14 00:00:00', 'Hồ Chí Minh', NULL,
+       (SELECT id FROM roles WHERE name = 'PAYROLL_STAFF'), (SELECT id FROM departments WHERE name = 'Finance'), (SELECT id FROM positions WHERE name = 'Payroll Staff'), '2024-04-10', 'WORKING', TRUE);
+
+-- 12.6. CẬP NHẬT AVATAR & TRƯỞNG PHÒNG
 SET SQL_SAFE_UPDATES = 0;
 UPDATE users
 SET avatar_url = CONCAT('https://api.dicebear.com/9.x/avataaars/svg?seed=', employee_code, '&size=200')
 WHERE active = TRUE AND id > 0;
 SET SQL_SAFE_UPDATES = 1;
 
-UPDATE departments SET manager_user_id = (SELECT id FROM users WHERE email = 'admin@company.com') WHERE name = 'Information Technology';
+-- Gán trưởng phòng: IT do EMP018 (minhquan.it@company.com) quản lý
+UPDATE departments SET manager_user_id = (SELECT id FROM users WHERE email = 'minhquan.it@company.com') WHERE name = 'Information Technology';
 UPDATE departments SET manager_user_id = (SELECT id FROM users WHERE email = 'hrmanager@company.com') WHERE name = 'Human Resources';
 UPDATE departments SET manager_user_id = (SELECT id FROM users WHERE email = 'payrollmanager@company.com') WHERE name = 'Finance';
 UPDATE departments SET manager_user_id = (SELECT id FROM users WHERE email = 'salesmanager@company.com') WHERE name = 'Sales';
 
--- 10.7. HỢP ĐỒNG LAO ĐỘNG (đã gia hạn đến 2027)
+-- 12.7. HỢP ĐỒNG LAO ĐỘNG (đã gia hạn đến 2027)
 INSERT INTO labor_contracts (user_id, contract_code, contract_type, start_date, end_date, base_salary, working_time, work_location, status, file_url, note) VALUES
                                                                                                                                                                 ((SELECT id FROM users WHERE email = 'admin@company.com'), 'HDLD-2024-001', 'FIXED_TERM', '2024-01-01', '2027-01-01', 30000000, 'Monday to Friday, 8:00 - 17:00', 'Ha Noi Office', 'ACTIVE', NULL, 'Contract for System Admin'),
+                                                                                                                                                                ((SELECT id FROM users WHERE email = 'minhquan.it@company.com'), 'HDLD-2024-018', 'FIXED_TERM', '2024-05-01', '2027-05-01', 28000000, 'Monday to Friday, 8:00 - 17:00', 'Ha Noi Office', 'ACTIVE', NULL, 'Contract for IT Dept Manager'),
                                                                                                                                                                 ((SELECT id FROM users WHERE email = 'hrmanager@company.com'), 'HDLD-2024-002', 'FIXED_TERM', '2024-01-15', '2027-01-15', 25000000, 'Monday to Friday, 8:00 - 17:00', 'Ha Noi Office', 'ACTIVE', NULL, 'Contract for HR Manager'),
                                                                                                                                                                 ((SELECT id FROM users WHERE email = 'maianh.hr@company.com'), 'HDLD-2024-003', 'FIXED_TERM', '2024-02-01', '2027-02-01', 15000000, 'Monday to Friday, 8:00 - 17:00', 'Ha Noi Office', 'ACTIVE', NULL, 'Contract for HR Staff'),
                                                                                                                                                                 ((SELECT id FROM users WHERE email = 'ngoclinh.hr@company.com'), 'HDLD-2024-004', 'FIXED_TERM', '2024-02-20', '2027-02-20', 15000000, 'Monday to Friday, 8:00 - 17:00', 'Ho Chi Minh Office', 'ACTIVE', NULL, 'Contract for HR Staff'),
@@ -468,7 +558,7 @@ INSERT INTO labor_contracts (user_id, contract_code, contract_type, start_date, 
                                                                                                                                                                 ((SELECT id FROM users WHERE email = 'businessadmin@company.com'), 'HDLD-2024-017', 'FIXED_TERM', '2024-04-01', '2027-04-01', 28000000, 'Monday to Friday, 8:00 - 17:00', 'Ha Noi Office', 'ACTIVE', NULL, 'Contract for Business Admin');
 
 -- ============================================================
--- 11. PERMISSIONS (TẤT CẢ QUYỀN)
+-- 13. PERMISSIONS (TẤT CẢ QUYỀN)
 -- ============================================================
 
 INSERT INTO permissions (code, name, description) VALUES
@@ -483,6 +573,8 @@ INSERT INTO permissions (code, name, description) VALUES
                                                       ('USER_CREATE', 'Add new user', 'Can create new user'),
                                                       ('USER_UPDATE', 'Update user information', 'Can update user information'),
                                                       ('USER_TOGGLE_STATUS', 'Active/deactive user', 'Can activate or deactivate user'),
+                                                      ('PASSWORD_RESET_REQUEST_VIEW', 'View password reset requests', 'Can view password reset request list'),
+                                                      ('PASSWORD_RESET_REQUEST_PROCESS', 'Process password reset requests', 'Can approve or reject password reset requests'),
                                                       ('ROLE_VIEW_LIST', 'View role list', 'Can view role list'),
                                                       ('ROLE_VIEW_PERMISSION', 'View role permissions', 'Can view permissions of role'),
                                                       ('ROLE_UPDATE', 'Update role information', 'Can update role information'),
@@ -526,7 +618,7 @@ INSERT INTO permissions (code, name, description) VALUES
                                                       ('PAYROLL_UPDATE_COMPONENT', 'Update salary component', 'Can update salary components'),
                                                       ('PAYROLL_CONFIRM', 'Confirm payroll', 'Can confirm payroll'),
                                                       ('PAYROLL_EXPORT_REPORT', 'Export payroll report', 'Can export payroll report'),
-                                                      -- Quyền Request (tên mới không có 'S')
+
                                                       ('VIEW_MY_REQUEST', 'View own request', 'Can view own request'),
                                                       ('VIEW_ALL_REQUEST', 'View all request', 'Can view all request'),
                                                       ('VIEW_REQUEST_DETAIL', 'View request detail', 'Can view request detail info'),
@@ -546,19 +638,21 @@ INSERT INTO permissions (code, name, description) VALUES
                                                       ('TASK_UPDATE_STATUS', 'Update task status', 'Can update task progress status');
 
 -- ============================================================
--- 12. PHÂN QUYỀN CHO TỪNG VAI TRÒ
+-- 14. PHÂN QUYỀN CHO TỪNG VAI TRÒ
 -- ============================================================
 
 -- SYSTEM ADMIN
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'SYSTEM ADMIN' AND p.code IN (
                                                                                                'HOMEPAGE_VIEW', 'AUTH_LOGIN', 'AUTH_LOGOUT', 'AUTH_FORGOT_PASSWORD', 'PROFILE_VIEW', 'PROFILE_CHANGE_PASSWORD',
-                                                                                               'USER_VIEW_LIST', 'USER_VIEW_DETAIL', 'USER_CREATE', 'USER_UPDATE', 'USER_TOGGLE_STATUS', 'ROLE_VIEW_LIST',
+                                                                                               'USER_VIEW_LIST', 'USER_VIEW_DETAIL', 'USER_CREATE', 'USER_UPDATE', 'USER_TOGGLE_STATUS',
+                                                                                               'PASSWORD_RESET_REQUEST_VIEW', 'PASSWORD_RESET_REQUEST_PROCESS', 'ROLE_VIEW_LIST',
                                                                                                'ROLE_VIEW_PERMISSION', 'ROLE_UPDATE', 'ROLE_TOGGLE_STATUS', 'ROLE_EDIT_PERMISSION', 'ROLE_CREATE',
                                                                                                'DEPARTMENT_MOVE_MEMBER', 'DEPARTMENT_ASSIGN_POSITION',
                                                                                                'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL',
                                                                                                'VIEW_MY_REQUEST', 'VIEW_REQUEST_DETAIL', 'CREATE_REQUEST', 'PROCESS_REQUEST', 'VIEW_DEPARTMENT_REQUESTS',
-                                                                                               'TASK_VIEW'
+                                                                                               'TASK_VIEW',
+                                                                                               'PAYROLL_VIEW_DETAIL'
     );
 
 -- BUSINESS ADMIN (tất cả quyền)
@@ -575,7 +669,9 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'HR_MANAGER' AN
                                                                                              'POSITION_VIEW_LIST', 'POSITION_VIEW_DETAIL', 'POSITION_CREATE', 'POSITION_UPDATE', 'POSITION_TOGGLE_STATUS',
                                                                                              'CONTRACT_VIEW_LIST', 'CONTRACT_VIEW_DETAIL', 'CONTRACT_VIEW_OWN', 'CONTRACT_CREATE', 'CONTRACT_UPDATE',
                                                                                              'CONTRACT_TERMINATE', 'CONTRACT_RENEW', 'ATTENDANCE_VIEW_OWN', 'ATTENDANCE_VIEW_DEPARTMENT', 'ATTENDANCE_VIEW_ALL',
-                                                                                             'ATTENDANCE_UPDATE', 'ATTENDANCE_EXPORT_REPORT', 'PAYROLL_VIEW_OWN', 'PAYROLL_VIEW_LIST', 'PAYROLL_CONFIRM', 'PAYROLL_EXPORT_REPORT',
+                                                                                             'ATTENDANCE_UPDATE', 'ATTENDANCE_EXPORT_REPORT', 'PAYROLL_VIEW_OWN', 'PAYROLL_VIEW_LIST',
+                                                                                             'PAYROLL_VIEW_DETAIL',
+                                                                                             'PAYROLL_CONFIRM', 'PAYROLL_EXPORT_REPORT',
                                                                                              'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL', 'ANNOUNCEMENT_CREATE',
                                                                                              'VIEW_MY_REQUEST', 'VIEW_REQUEST_DETAIL', 'CREATE_REQUEST', 'PROCESS_REQUEST', 'VIEW_DEPARTMENT_REQUESTS',
                                                                                              'TASK_VIEW', 'TASK_CREATE', 'TASK_UPDATE', 'TASK_DELETE', 'TASK_MANAGE_CHECKLIST', 'TASK_UPDATE_STATUS'
@@ -589,6 +685,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'HR_STAFF' AND 
                                                                                            'POSITION_VIEW_LIST', 'POSITION_VIEW_DETAIL', 'CONTRACT_VIEW_LIST', 'CONTRACT_VIEW_DETAIL', 'CONTRACT_VIEW_OWN',
                                                                                            'CONTRACT_CREATE', 'CONTRACT_UPDATE', 'CONTRACT_TERMINATE', 'ATTENDANCE_VIEW_OWN', 'ATTENDANCE_VIEW_DEPARTMENT',
                                                                                            'ATTENDANCE_VIEW_ALL', 'ATTENDANCE_UPDATE', 'ATTENDANCE_EXPORT_REPORT', 'PAYROLL_VIEW_OWN',
+                                                                                           'PAYROLL_VIEW_DETAIL',
                                                                                            'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL',
                                                                                            'VIEW_MY_REQUEST', 'VIEW_REQUEST_DETAIL', 'CREATE_REQUEST', 'PROCESS_REQUEST',
                                                                                            'TASK_VIEW'
@@ -623,6 +720,7 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'DEPARTMENT_MAN
                                                                                                      'HOMEPAGE_VIEW', 'AUTH_LOGIN', 'AUTH_LOGOUT', 'AUTH_FORGOT_PASSWORD', 'PROFILE_VIEW', 'PROFILE_CHANGE_PASSWORD',
                                                                                                      'DEPARTMENT_VIEW_LIST', 'DEPARTMENT_VIEW_DETAIL', 'DEPARTMENT_VIEW_EMPLOYEES', 'ATTENDANCE_VIEW_OWN',
                                                                                                      'ATTENDANCE_VIEW_DEPARTMENT', 'CONTRACT_VIEW_OWN', 'PAYROLL_VIEW_OWN',
+                                                                                                     'PAYROLL_VIEW_DETAIL',
                                                                                                      'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL',
                                                                                                      'VIEW_MY_REQUEST', 'VIEW_REQUEST_DETAIL', 'CREATE_REQUEST', 'PROCESS_REQUEST', 'VIEW_DEPARTMENT_REQUESTS',
                                                                                                      'TASK_VIEW', 'TASK_CREATE', 'TASK_UPDATE', 'TASK_DELETE', 'TASK_MANAGE_CHECKLIST', 'TASK_UPDATE_STATUS'
@@ -633,6 +731,7 @@ INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'EMPLOYEE' AND p.code IN (
                                                                                            'HOMEPAGE_VIEW', 'AUTH_LOGIN', 'AUTH_LOGOUT', 'AUTH_FORGOT_PASSWORD', 'PROFILE_VIEW', 'PROFILE_CHANGE_PASSWORD',
                                                                                            'ATTENDANCE_CHECK_IN', 'ATTENDANCE_CHECK_OUT', 'ATTENDANCE_VIEW_OWN', 'CONTRACT_VIEW_OWN', 'PAYROLL_VIEW_OWN',
+                                                                                           'PAYROLL_VIEW_DETAIL',
                                                                                            'DEPARTMENT_VIEW_LIST', 'DEPARTMENT_VIEW_DETAIL', 'DEPARTMENT_VIEW_EMPLOYEES',
                                                                                            'VIEW_MY_REQUEST', 'VIEW_REQUEST_DETAIL', 'CREATE_REQUEST', 'PROCESS_REQUEST',
                                                                                            'ANNOUNCEMENT_VIEW_LIST', 'ANNOUNCEMENT_VIEW_DETAIL',
@@ -640,5 +739,5 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'EMPLOYEE' AND 
     );
 
 -- ============================================================
--- 13. KẾT THÚC - DATABASE ĐÃ SẴN SÀNG
+-- 15. KẾT THÚC - DATABASE ĐÃ SẴN SÀNG
 -- ============================================================

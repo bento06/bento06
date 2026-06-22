@@ -110,7 +110,7 @@
 
                 <label class="inline-checkbox">
                     <input type="checkbox" name="allowParticipantsCompleteChecklist" value="true">
-                    Allow participants to complete checklist
+                    Allow assignee and participants to complete checklist
                 </label>
 
                 <div class="form-row">

@@ -75,6 +75,7 @@
                         <span><i class="legend-dot status-absent"></i>Absent</span>
                         <span><i class="legend-dot status-forgot"></i>Forgot Check In/Out</span>
                         <span><i class="legend-dot status-leave"></i>On leave</span>
+                        <span><span class="record-chip chip-ot" style="margin-right:4px;">OT</span>Overtime</span>
                     </div>
 
                     <div class="attendance-calendar">
@@ -114,10 +115,13 @@
                                                             </c:url>
                                                             <a href="${updateUrl}" class="record-chip ${record.cssClass}" title="${record.status}">
                                                                 <span class="chip-dot"></span>
-                                                                ${record.checkInText} - ${record.checkOutText}
+                                                                <c:choose>
+                                                                    <c:when test="${record.status == 'ON_LEAVE'}">On leave</c:when>
+                                                                    <c:otherwise>${record.checkInText} - ${record.checkOutText}</c:otherwise>
+                                                                </c:choose>
                                                             </a>
-                                                            <c:if test="${record.overtimeHours > 0}">
-                                                                <span class="record-chip chip-ot">OT</span>
+                                                            <c:if test="${not empty record.otStatus and (record.otStatus == 'REGISTERED' or record.otStatus == 'COMPLETED' or record.otStatus == 'PARTIAL' or record.otStatus == 'ABSENT')}">
+                                                                <a href="${pageContext.request.contextPath}/get_overtime_detail?userId=${record.userId}&workDate=${record.workDate}" class="record-chip chip-ot" style="text-decoration:none;" title="View OT Detail">OT</a>
                                                             </c:if>
                                                             <c:if test="${record.edited}">
                                                                 <span class="record-chip chip-edited">Edited</span>
@@ -138,7 +142,6 @@
                     </div>
                 </div>
 
-                <!-- Summary card bên phải giống hệt my_attendance.jsp -->
                 <div class="my-attendance-summary-card">
                     <div class="attendance-work-card">
                         <div class="attendance-work-icon">
