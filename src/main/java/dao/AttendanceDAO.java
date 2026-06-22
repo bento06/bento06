@@ -146,7 +146,7 @@ public class AttendanceDAO {
         }
     }
 
-    private boolean saveAttendanceRecord(AttendanceRecord record) {
+    public boolean saveAttendanceRecord(AttendanceRecord record) {
         String sql = "INSERT INTO attendance_records (user_id, work_date, check_in, check_out, " +
                 "total_work_hours, overtime_hours, late_hours, early_leave_hours, status, note, created_at) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW()) " +

@@ -1,8 +1,6 @@
 package controller.request;
 
-import dao.AttendanceDAO;
-import dao.DepartmentDAO;
-import dao.UserDAO;
+import dao.*;
 import model.AttendanceSummary;
 import model.Department;
 import model.User;
@@ -174,6 +172,60 @@ public class LoadSubFormServlet extends HttpServlet {
             request.setAttribute("observerList", observers);
 
             jspPath = "/WEB-INF/views/request/subforms/overtime.jsp";
+        } else if ("ATTENDANCE_ADJUST".equals(type)) {
+            User currentUser = userDAO.findById(user.getId());
+
+            List<User> hrStaffList = userDAO.getUserByPosition("HR Staff");
+            request.setAttribute("hrStaffList", hrStaffList);
+
+            List<User> observers = new ArrayList<>();
+            List<User> allManagers = userDAO.getAllDeptManager();
+            for (User mgr : allManagers) {
+                if (mgr.getId() != currentUser.getId() && !observers.contains(mgr)) {
+                    observers.add(mgr);
+                }
+            }
+            List<User> hrManagers = userDAO.getUserByPosition("HR Manager");
+            for (User hr : hrManagers) {
+                if (hr.getId() != currentUser.getId() && !observers.contains(hr)) {
+                    observers.add(hr);
+                }
+            }
+            List<User> businessAdmins = userDAO.getUserByRole("BUSINESS ADMIN");
+            for (User ba : businessAdmins) {
+                if (ba.getId() != currentUser.getId() && !observers.contains(ba)) {
+                    observers.add(ba);
+                }
+            }
+            request.setAttribute("observerList", observers);
+
+            LocalDate today = LocalDate.now();
+            int currentDay = today.getDayOfMonth();
+            LocalDate minDate;
+            if (currentDay <= 5) {
+                request.setAttribute("blocked", true);
+                minDate = today.plusDays(1);
+            } else {
+                request.setAttribute("blocked", false);
+                minDate = LocalDate.of(today.getYear(), today.getMonth(), 6);
+                if (minDate.isBefore(today)) {
+                    minDate = today;
+                }
+            }
+            LocalDate maxDate = today.withDayOfMonth(today.lengthOfMonth());
+
+            request.setAttribute("minDate", minDate.toString());
+            request.setAttribute("maxDate", maxDate.toString());
+
+            AttendanceChangeRequestDAO acrDAO = new AttendanceChangeRequestDAO();
+            int count = acrDAO.countCurrentMonthByUser(currentUser.getId(), today.getMonthValue(), today.getYear());
+            request.setAttribute("remainingAdjustments", Math.max(0, 2 - count));
+
+            request.setAttribute("proposer", currentUser);
+            request.setAttribute("today", today.toString());
+            request.setAttribute("now", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+
+            jspPath = "/WEB-INF/views/request/subforms/attendance_change.jsp";
         }
 
         try {

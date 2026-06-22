@@ -3,6 +3,11 @@
 <script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
 
 <div class="request-group">
+    <label>Proposer</label>
+    <input type="text" class="request-input" value="${sessionScope.currentUser.fullName}" readonly />
+</div>
+
+<div class="request-group">
     <label>Proposal Date</label>
     <input type="text" class="request-input" value="${now}" readonly />
 </div>

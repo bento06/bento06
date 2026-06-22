@@ -1,8 +1,11 @@
 package controller.request;
 
 import dao.AttendanceDAO;
+import dao.AttendanceChangeRequestDAO;
 import dao.LeaveRequestDAO;
 import dao.RequestDAO;
+import model.AttendanceChangeRequest;
+import model.AttendanceRecord;
 import model.LeaveRequest;
 import model.Request;
 import jakarta.servlet.annotation.WebServlet;
@@ -11,12 +14,14 @@ import model.User;
 
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.time.LocalDateTime;
 
 @WebServlet("/process_request")
 public class ProcessRequestServlet extends HttpServlet {
     private final RequestDAO dao = new RequestDAO();
     private final LeaveRequestDAO leaveRequestDAO = new LeaveRequestDAO();
     private final AttendanceDAO attendanceDAO = new AttendanceDAO();
+    private final AttendanceChangeRequestDAO attendanceChangeRequestDAO = new AttendanceChangeRequestDAO();
 
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
@@ -74,6 +79,30 @@ public class ProcessRequestServlet extends HttpServlet {
                                     } else if ("LEAVE".equals(lr.getLeaveType())) {
                                         attendanceDAO.markAbsent(req.getUserId(), lr.getLeaveDate());
                                     }
+                                }
+                            } else if ("APPROVE".equals(action) && "ATTENDANCE_ADJUST".equals(req.getType())) {
+                                AttendanceChangeRequest acr = attendanceChangeRequestDAO.getByRequestId(requestId);
+                                if (acr != null) {
+                                    AttendanceRecord record = attendanceDAO.getRecordByUserAndDate(req.getUserId(), acr.getWorkDate());
+                                    if (record == null) {
+                                        record = new AttendanceRecord();
+                                        record.setUserId(req.getUserId());
+                                        record.setWorkDate(acr.getWorkDate());
+                                    }
+                                    if (acr.getDesiredCheckIn() != null) {
+                                        record.setCheckIn(LocalDateTime.of(acr.getWorkDate(), acr.getDesiredCheckIn()));
+                                    } else {
+                                        record.setCheckIn(null);
+                                    }
+                                    if (acr.getDesiredCheckOut() != null) {
+                                        record.setCheckOut(LocalDateTime.of(acr.getWorkDate(), acr.getDesiredCheckOut()));
+                                    } else {
+                                        record.setCheckOut(null);
+                                    }
+                                    record.setNote("Attendance adjusted via request #" + requestId);
+                                    attendanceDAO.calculateWorkingHours(record);
+                                    record.setStatus(attendanceDAO.determineStatus(record));
+                                    attendanceDAO.saveAttendanceRecord(record);
                                 }
                             } else if ("OVERTIME".equals(req.getType())) {
                                 service.OvertimeService overtimeService = new service.OvertimeService();

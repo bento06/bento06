@@ -68,6 +68,20 @@
                             <span class="detail-value"><strong>${leaveRequest.leaveDate}</strong></span>
                         </div>
                     </c:if>
+                    <c:if test="${request.type == 'ATTENDANCE_ADJUST' && not empty attendanceChangeRequest}">
+                        <div class="detail-row">
+                            <span class="detail-label">Work Date:</span>
+                            <span class="detail-value">${attendanceChangeRequest.workDate}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Desired Check-in:</span>
+                            <span class="detail-value">${not empty attendanceChangeRequest.desiredCheckIn ? attendanceChangeRequest.desiredCheckIn : '--'}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Desired Check-out:</span>
+                            <span class="detail-value">${not empty attendanceChangeRequest.desiredCheckOut ? attendanceChangeRequest.desiredCheckOut : '--'}</span>
+                        </div>
+                    </c:if>
                     <c:if test="${request.type == 'OVERTIME' && not empty overtimeRequest}">
                         <div class="detail-row">
                             <span class="detail-label">OT Date:</span>
