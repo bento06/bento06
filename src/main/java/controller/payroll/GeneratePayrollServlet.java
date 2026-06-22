@@ -51,7 +51,7 @@ public class GeneratePayrollServlet extends HttpServlet {
                 return;
             }
 
-            int successCount = payrollService.generateBulkPayroll(employeesToCalculate, month, year, expectedHours);
+            int successCount = payrollService.generateBulkPayroll(employeesToCalculate, month, year, expectedHours, departmentId);
 
             request.setAttribute("success", "Successfully generated " + successCount + " payroll records for " + month + "/" + year + ".");
 
