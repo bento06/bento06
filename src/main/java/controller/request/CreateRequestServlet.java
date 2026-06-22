@@ -171,17 +171,17 @@ public class CreateRequestServlet extends HttpServlet {
                 int requestId = requestDAO.createRequestAndGetId(req, new ArrayList<>(uniqueObsIds));
                 leaveRequestDAO.createLeaveRequest(requestId, leaveDate, leaveType);
             } else if ("ATTENDANCE_ADJUST".equals(req.getType())) {
+                if (LocalDate.now().getDayOfMonth() <= 5) {
+                    response.sendRedirect("create_request?error=adjustment_blocked_first_5_days");
+                    return;
+                }
+
                 String workDateStr = request.getParameter("workDate");
                 if (workDateStr == null || workDateStr.trim().isEmpty()) {
                     response.sendRedirect("create_request?error=missing_work_date");
                     return;
                 }
                 LocalDate workDate = LocalDate.parse(workDateStr);
-
-                if (workDate.getDayOfMonth() <= 5) {
-                    response.sendRedirect("create_request?error=adjustment_blocked_first_5_days");
-                    return;
-                }
 
                 AttendanceChangeRequestDAO acrDAO = new AttendanceChangeRequestDAO();
                 int count = acrDAO.countCurrentMonthByUser(

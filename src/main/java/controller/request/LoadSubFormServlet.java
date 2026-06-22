@@ -201,18 +201,14 @@ public class LoadSubFormServlet extends HttpServlet {
 
             LocalDate today = LocalDate.now();
             int currentDay = today.getDayOfMonth();
-            LocalDate minDate;
             if (currentDay <= 5) {
                 request.setAttribute("blocked", true);
-                minDate = today.plusDays(1);
             } else {
                 request.setAttribute("blocked", false);
-                minDate = LocalDate.of(today.getYear(), today.getMonth(), 6);
-                if (minDate.isBefore(today)) {
-                    minDate = today;
-                }
             }
-            LocalDate maxDate = today.withDayOfMonth(today.lengthOfMonth());
+
+            LocalDate minDate = LocalDate.of(today.getYear(), 1, 1);
+            LocalDate maxDate = today;
 
             request.setAttribute("minDate", minDate.toString());
             request.setAttribute("maxDate", maxDate.toString());
