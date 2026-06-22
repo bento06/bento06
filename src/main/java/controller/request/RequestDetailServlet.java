@@ -43,7 +43,13 @@ public class RequestDetailServlet extends HttpServlet {
                 AttendanceChangeRequest acr = acrDAO.getByRequestId(id);
                 request.setAttribute("attendanceChangeRequest", acr);
             } else if ("OVERTIME".equals(req.getType())) {
-                // xử lý overtime nếu có
+                dao.OvertimeRequestDAO overtimeRequestDAO = new dao.OvertimeRequestDAO();
+                dao.OvertimeParticipantDAO overtimeParticipantDAO = new dao.OvertimeParticipantDAO();
+                model.OvertimeRequest oreq = overtimeRequestDAO.getByRequestId(id);
+                if (oreq != null) {
+                    request.setAttribute("overtimeRequest", oreq);
+                    request.setAttribute("overtimeParticipants", overtimeParticipantDAO.getByOvertimeRequestId(oreq.getId()));
+                }
             }
 
             request.setAttribute("request", req);
