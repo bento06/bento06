@@ -688,3 +688,45 @@ SELECT r.id, p.id FROM roles r JOIN permissions p WHERE r.name = 'EMPLOYEE' AND 
 -- ============================================================
 -- 13. KẾT THÚC - DATABASE ĐÃ SẴN SÀNG
 -- ============================================================
+-- ============================================================
+-- OVERTIME MODULE (bổ sung)
+-- ============================================================
+-- Bảng overtime_requests (giữ nguyên cấu trúc)
+CREATE TABLE IF NOT EXISTS overtime_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    request_id INT NOT NULL UNIQUE,
+    department_id INT NOT NULL,
+    overtime_date DATE NOT NULL,
+    shift_start TIME NOT NULL DEFAULT '17:00:00',
+    shift_end TIME NOT NULL DEFAULT '19:00:00',
+    total_hours DECIMAL(5,2) NOT NULL DEFAULT 0,
+    reason TEXT,
+    created_by INT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    CONSTRAINT fk_overtime_request FOREIGN KEY (request_id) REFERENCES requests(id) ON DELETE CASCADE,
+    CONSTRAINT fk_overtime_department FOREIGN KEY (department_id) REFERENCES departments(id),
+    CONSTRAINT fk_overtime_created_by FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Bảng overtime_participants (đã sửa status và thêm index)
+CREATE TABLE IF NOT EXISTS overtime_participants (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    overtime_request_id INT NOT NULL,
+    user_id INT NOT NULL,
+    status ENUM('PENDING', 'REGISTERED', 'COMPLETED', 'PARTIAL', 'ABSENT', 'REJECTED', 'CANCELLED') DEFAULT 'PENDING',
+    hours_actual DECIMAL(4,1) DEFAULT 0.0,
+    confirmed_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_overtime_participants_request FOREIGN KEY (overtime_request_id) REFERENCES overtime_requests(id) ON DELETE CASCADE,
+    CONSTRAINT fk_overtime_participants_user FOREIGN KEY (user_id) REFERENCES users(id),
+    UNIQUE KEY uk_ot_participant (overtime_request_id, user_id)
+);
+
+ALTER TABLE requests 
+MODIFY COLUMN status ENUM('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED', 'CONFIRMED') 
+DEFAULT 'PENDING';
+
+-- Index để tăng hiệu suất truy vấn
+CREATE INDEX idx_overtime_participants_user ON overtime_participants(user_id);
+CREATE INDEX idx_overtime_requests_date ON overtime_requests(overtime_date);
