@@ -117,7 +117,7 @@
                                 <c:if test="${request.status == 'APPROVED' && (sessionScope.currentUser.id eq request.approverId || fn:contains(sessionScope.currentUser.roleName, 'HR'))}">
                                     <form action="confirm_overtime" method="POST" style="margin-top: 15px;">
                                         <input type="hidden" name="requestId" value="${request.id}">
-                                        <button type="submit" class="btn btn-success" onclick="return confirm('Bạn có chắc chắn muốn xác nhận tính giờ OT cho request này?');">Xác nhận OT (Confirm Overtime)</button>
+                                        <button type="submit" class="btn btn-success" style="border: 2px solid #28a745;" onclick="return confirm('Bạn có chắc chắn muốn xác nhận tính giờ OT cho request này?');">Confirm Overtime</button>
                                     </form>
                                 </c:if>
                                 <c:if test="${request.status == 'CONFIRMED'}">
